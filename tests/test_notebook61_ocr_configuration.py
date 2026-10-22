@@ -1,4 +1,8 @@
 """Notebook 61 LAYOUT_V2 geometry and decoding are preserved in the app."""
+from contextlib import nullcontext
+import sys
+from types import SimpleNamespace
+
 from PIL import Image
 import pytest
 
@@ -26,6 +30,7 @@ def test_craft_thresholds_and_conservative_merge(monkeypatch):
 
 def test_notebook61_crop_and_generation_settings(monkeypatch):
     seen = {}
+    monkeypatch.setitem(sys.modules, 'torch', SimpleNamespace(inference_mode=nullcontext))
 
     class Pixels:
         def to(self, device):
