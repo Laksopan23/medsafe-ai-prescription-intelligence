@@ -50,7 +50,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
  const extracted=selected.extraction||{};
  return <section className={'surface comparison-panel'+(embedded?' comparison-embedded':'')}>
   <div className="section-top"><div><h3>Try the same image with each method</h3>
-   <p>Compare local readers on the same image. You can also opt in to a cloud comparison.</p></div></div>
+   <p>{embedded?'Compare local readers on the same image.':'Compare the available text-reading methods on the same image.'}</p></div></div>
   <div className="comparison-form">
    {!embedded&&<div className="comparison-source">
     <input ref={picker} type="file" accept=".png,.jpg,.jpeg,.webp,.pdf" hidden onChange={e=>choose(e.target.files?.[0])}/>
@@ -66,8 +66,8 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
     <select id="comparison-mode" value={mode} onChange={e=>{setMode(e.target.value);setResult(null)}}>
      {MODES.map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>}
-   <label className="comparison-gemini"><input type="checkbox" checked={useGemini} onChange={e=>{setUseGemini(e.target.checked);setResult(null)}}/>
-    Include Google-hosted text reader (sends this image to Google; use only with permission)</label>
+   {embedded&&<label className="comparison-gemini"><input type="checkbox" checked={useGemini} onChange={e=>{setUseGemini(e.target.checked);setResult(null)}}/>
+    Include additional text reader (this sends the image outside this computer)</label>}
    <button type="button" className="button button-primary comparison-submit" onClick={compare} disabled={!file||busy||file.size>8*1024*1024}>
     {busy?<LoaderCircle className="spin" size={17}/>:<ArrowRight size={17}/>}
     {busy?'Reading image…':useGemini?'Compare five methods':'Compare four local methods'}</button>

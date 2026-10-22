@@ -42,7 +42,7 @@ describe('comparison workspace',()=>{
  });
  it('shows explicit no-reference behavior before any model runs',()=>{
   render(<OCRComparison/>);
-  expect(screen.getByText(/compare local readers on the same image/i)).toBeTruthy();
+  expect(screen.getByText(/compare the available text-reading methods/i)).toBeTruthy();
   expect(screen.getByRole('button',{name:/compare four local methods/i}).disabled).toBe(true);
  });
 });
