@@ -46,9 +46,8 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
  const selected=result?.engines?.[active]||{};
  const extracted=selected.extraction||{};
  return <section className={'surface comparison-panel'+(embedded?' comparison-embedded':'')}>
-  <div className="section-top"><div><h3>Compare all four OCR engines</h3>
-   <p>One prescription, the same preprocessing, four independent recognizers. Switch engines below to inspect the actual output.</p></div>
-   <Badge tone="neutral">Research preview</Badge></div>
+  <div className="section-top"><div><h3>Try the same image with each method</h3>
+   <p>One prescription, the same preprocessing, four independent recognizers. Choose a method below to read its text.</p></div></div>
   <div className="comparison-form">
    {!embedded&&<div className="comparison-source">
     <input ref={picker} type="file" accept=".png,.jpg,.jpeg,.webp,.pdf" hidden onChange={e=>choose(e.target.files?.[0])}/>
@@ -81,9 +80,10 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
   {error&&<div className="comparison-notice"><Notice type="error">{error}</Notice></div>}
   {result&&<div className="comparison-result" aria-live="polite">
    <div className="comparison-result-header"><div><h4>Results on this prescription</h4>
-    <p>{result.completed_engines} of {result.n_engines} engines completed · {result.preprocessing?.mode||'none'} preprocessing · Same input for each engine</p></div>
-    <button type="button" className="button button-ghost" onClick={()=>saveJSON('medsafe-ocr-comparison.json',result)}>Export JSON</button></div>
-   <div className="comparison-tablescroll"><table className="comparison-table"><caption>Table 1. Current image: engine output comparison (field counts are not accuracy).</caption>
+    <p>{result.completed_engines} of {result.n_engines} methods completed. Select a method to compare its text with the image.</p></div>
+    <button type="button" className="button button-ghost" onClick={()=>saveJSON('medsafe-ocr-comparison.json',result)}>Download results</button></div>
+   <details className="comparison-stats"><summary>View scores and timing</summary>
+   <div className="comparison-tablescroll"><table className="comparison-table"><caption>Current image: method output comparison. Detected fields are not an accuracy score.</caption>
     <thead><tr><th scope="col">OCR engine</th><th scope="col">Inference time</th><th scope="col">Text regions</th><th scope="col">Fields detected</th><th scope="col">CER</th><th scope="col">WER</th><th scope="col">Availability</th></tr></thead>
     <tbody>{ENGINES.map(engine=>{const r=result.engines?.[engine]||{},ok=r.status==='COMPLETED';
      return <tr key={engine} className={engine===active?'comparison-selected-row':''}>
@@ -92,7 +92,8 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
       <td>{ok?(r.extraction?.field_coverage?.detected??0)+' / '+(r.extraction?.field_coverage?.possible??0):'—'}</td>
       <td>{ok?pct(r.reference_metrics?.cer):'—'} {top===engine&&<span className="comparison-lowest">Lowest on entered text</span>}</td>
       <td>{ok?pct(r.reference_metrics?.wer):'—'}</td><td><Badge tone={ok?'teal':'amber'}>{statusLabel(r.status)}</Badge></td></tr>})}</tbody></table></div>
-   <p className="comparison-metric-note">{result.reference_used?'CER/WER are calculated only against your manually entered text; accuracy remains unverified.':'No verified transcription provided: accuracy, CER and WER cannot be measured for this image. Field coverage only counts text patterns.'} Processing time is measured per engine, not full clinical workflow speed.</p>
+   <p className="comparison-metric-note">{result.reference_used?'Text error rates compare against the text you entered for this image.':'No verified transcription provided: text accuracy cannot be measured for this image.'} Time shown is for each reading method.</p>
+   </details>
    <div className="comparison-switcher" role="group" aria-label="Inspect OCR engine results">
     {ENGINES.map(engine=><button type="button" key={engine} className={engine===active?'is-active':''} aria-pressed={active===engine} onClick={()=>setActive(engine)}>{formatEngine(engine)}</button>)}
    </div>
@@ -100,13 +101,13 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
     <div className="comparison-inspector-heading"><h4>{formatEngine(active)} — detailed output</h4><Badge tone={selected.status==='COMPLETED'?'teal':'amber'}>{statusLabel(selected.status)}</Badge></div>
     {selected.status==='COMPLETED'?<>
      <div className="comparison-inspector-columns">
-      <div><div className="comparison-panel-label">Unverified OCR text</div>
+      <div><div className="comparison-panel-label">Text read from image</div>
        <pre className="comparison-raw-text">{selected.text||'No readable text returned by this engine.'}</pre>
        <button className="text-link" type="button" onClick={()=>navigator.clipboard?.writeText(selected.text||'')}><ClipboardCopy size={15}/> Copy text</button>
       </div>
-      <div><div className="comparison-panel-label">Fields detected from OCR (review required)</div>
+      <div><div className="comparison-panel-label">Possible prescription details</div>
        {(extracted.medications||[]).map(med=><div key={med.index} className="comparison-extraction-block">
-        <strong>Medication {med.index} {med.candidate_only?'· Unverified candidate':'· OCR extraction'}</strong>
+        <strong>Medication {med.index}{med.candidate_only?' · Check against image':''}</strong>
         <dl>{FIELDS.map(([key,label])=><div key={key}><dt>{label}</dt><dd>{med.fields?.[key]||'Not recognized'}</dd></div>)}</dl>
         {med.source_line&&<p className="comparison-source-line">OCR source line: {med.source_line}</p>}
        </div>)}
@@ -116,7 +117,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
       <ul>{selected.warnings.map((w,i)=><li key={i}>{w.replaceAll('_',' ')}</li>)}</ul></details>}
     </>:<div className="comparison-unavailable"><XCircle size={19}/><p>{selected.reason||'The model is not ready in this environment. Install its dependencies and weights to compare it.'}</p></div>}
    </div>
-   <div className="comparison-disclaimer"><ShieldAlert size={19}/><div><strong>Never treat the most complete-looking OCR as clinically correct.</strong> Confirm the source image, medicine and administered dose manually. Missing models are shown as unavailable; no predictions are substituted. A user-entered reference is not an independent held-out evaluation, and no safety approval is provided.</div></div>
+   <div className="comparison-disclaimer"><ShieldAlert size={19}/><div>Compare every result with the original image before using the text.</div></div>
   </div>}
  </section>;
 }

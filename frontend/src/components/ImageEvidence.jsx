@@ -41,6 +41,6 @@ export default function ImageEvidence({src,width,height,regions=[],alt='Original
     </g>)}
    </svg>}
   </div>
-  {boxes.length>0&&<p className="source-image-note">Colored rectangles show automatically proposed text regions, not verified medicine locations.</p>}
+  {boxes.length>0&&<p className="source-image-note">Highlighted areas show where text was found. Compare them with the image.</p>}
  </div>;
 }

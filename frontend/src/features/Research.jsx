@@ -1,54 +1,89 @@
-import React from 'react';
+import React,{useState} from 'react';
+import {BrainCircuit,CheckCircle2,Clock3} from 'lucide-react';
 import OCRComparison from './OCRComparison.jsx';
-import { Activity, BookOpen, BrainCircuit, CheckCircle2, Database, Gauge, ShieldAlert, Target } from 'lucide-react';
-import {Badge,Notice} from '../components/Status.jsx';
-const titles={tesseract:['Tesseract','OCR baseline'],easyocr:['EasyOCR','Neural OCR recognizer'],paddleocr:['PaddleOCR','Document understanding'],craft_trocr:['CRAFT + TrOCR','Notebook 44 handwriting recognition']};
-const targets=[
- ['Character error rate','≤ 10%','CER'],['Medicine name accuracy','≥ 90%','Exact field match'],['Dosage field accuracy','≥ 90%','Exact field match'],
- ['Overdose precision & recall','≥ 85%','Independent alert labels'],['Age-check accuracy','≥ 85%','Independent age labels'],['Processing speed','≤ 10s','Per-image GPU benchmark']
+import {Badge} from '../components/Status.jsx';
+
+const readers=[
+  ['tesseract','Tesseract','Standard text reader'],
+  ['easyocr','EasyOCR','Handwriting reader'],
+  ['paddleocr','PaddleOCR','Document reader'],
+  ['craft_trocr','CRAFT + TrOCR','Fine-tuned handwriting reader'],
 ];
-export default function Research({research={},models={},historical={},benchmarks={}}){
- const installed=models.benchmark_engines||{};
- const [selectedVariant,setSelectedVariant]=React.useState('original');
- return <div className="stack-lg">
-   <div className="research-banner"><div className="research-banner-icon"><BrainCircuit size={27}/></div>
-    <div><h2>Reproducible OCR evaluation</h2><p>Four engines, shared held-out images and human-verified references. Model installation does not imply validated accuracy.</p></div>
-    <Badge tone="amber">Independent results required</Badge></div>
-   <OCRComparison/>
-   {historical.n_aligned_images>0&&<section className="surface"><div className="section-top"><div><h3>Archived four-engine comparison</h3><p>{historical.n_aligned_images} matching original-variant medicine-word images · earlier experiment, not final trained checkpoint</p></div><Badge tone="amber">Historical baseline</Badge></div>
-    {historical.variants&&<label className="research-evidence-note">Preprocessing condition: <select aria-label="Historical OCR preprocessing condition" value={selectedVariant} onChange={e=>setSelectedVariant(e.target.value)}>{Object.keys(historical.variants).map(v=><option key={v} value={v}>{v}</option>)}</select></label>}
-    <div className="table-scroll"><table className="data-table"><thead><tr><th>OCR engine</th><th>Character error</th><th>Word error</th><th>Medicine accuracy</th></tr></thead>
-    <tbody>{Object.entries(historical.engines||{}).map(([name,metrics])=><tr key={name}><td><strong>{name==='trocr_historical'?'TrOCR (historical)':name.charAt(0).toUpperCase()+name.slice(1)}</strong></td>
-      <td>{((historical.variants?.[selectedVariant]?.[name]?.CER??metrics.micro_CER)*100).toFixed(2)}%</td><td>{selectedVariant==='original'?(metrics.micro_WER*100).toFixed(2)+'%':'—'}</td><td><span className="target-number">{((historical.variants?.[selectedVariant]?.[name]?.medicine_accuracy??metrics.medicine_accuracy)*100).toFixed(2)}%</span> <small>{selectedVariant==='original'?`(${metrics.correct}/780)`:'(780 images)'}</small></td></tr>)}</tbody></table></div>
-    <div className="research-evidence-note">These aligned medicine-word measurements come from earlier experiment CSVs. Variants reflect archived image preprocessing, not independently annotated capture conditions. They do not assess age, administered doses, or the later Notebook 44 fine-tuned TrOCR model.</div>
-   </section>}
-   <section className="surface"><div className="section-top"><div><h3>Current held-out benchmark</h3><p>Results appear when a human-verified test manifest has been evaluated by all selected OCR engines</p></div><Badge tone={benchmarks.status==='HUMAN_VERIFIED_TEST'?'teal':'amber'}>{benchmarks.status==='HUMAN_VERIFIED_TEST'?'Human-verified cohort':'No verified run configured'}</Badge></div>
-   {Object.keys(benchmarks.engines||{}).length>0?<div className="table-scroll"><table className="data-table"><thead><tr><th>Engine</th><th>OCR coverage</th><th>CER</th><th>Medicine name</th><th>Dose alerts evaluated</th><th>Age alerts evaluated</th><th>95th-percentile time</th></tr></thead>
-   <tbody>{Object.entries(benchmarks.engines).map(([name,item])=><tr key={name}><td>{name}</td><td>{(Number(item.coverage||0)*100).toFixed(0)}%</td><td>{item.metrics?.ocr?.CER!=null?(item.metrics.ocr.CER*100).toFixed(2)+'%':'Not verified'}</td>
-    <td>{item.metrics?.fields?.medicine?.accuracy!=null?(item.metrics.fields.medicine.accuracy*100).toFixed(2)+'%':'Not verified'}</td>
-    <td>{item.dose_alert_evaluated_n??'—'} / {item.n_total??'—'}</td><td>{item.age_alert_evaluated_n??'—'} / {item.n_total??'—'}</td><td>{item.timing?.p95_s!=null?item.timing.p95_s+' s':'—'}</td></tr>)}</tbody></table></div>:
-    <div className="research-evidence-note">No independent benchmark JSON is loaded in this installation. Run <code>python -m backend.app.research.benchmark</code> with human-reviewed test images, then configure MEDSAFE_BENCHMARK_RESULTS.</div>}
-    <div className="research-evidence-note">OCR scores are reported separately from clinical flags. Unavailable reviewed drug rules cause overdose and age assessments to abstain; those cases cannot count as correct negatives. Benchmark preprocessing: <strong>{benchmarks.preprocessing_mode||'none'}</strong>.</div>
-   </section>
-   <section className="surface"><div className="section-top"><div><h3>Recognition engines</h3><p>Availability reported by this running environment</p></div></div>
-    <div className="research-engines">{Object.entries(titles).map(([id,[name,description]])=><div className="research-engine" key={id}>
-    <div className="research-engine-icon"><BrainCircuit size={21}/></div><div><strong>{name}</strong><p>{description}</p></div><Badge tone={installed[id]?'teal':'amber'}>{installed[id]?'Ready for use':'Setup or model checkpoint required'}</Badge></div>)}</div>
-   </section>
-   <section className="surface"><div className="section-top"><div><h3>Thesis acceptance criteria</h3><p>Targets below are goals, not measured achievements</p></div><Target className="muted-icon" size={20}/></div>
-    <div className="criteria-table table-scroll"><table className="data-table"><thead><tr><th>Metric</th><th>Acceptance criterion</th><th>Evaluation method</th><th>Evidence</th></tr></thead><tbody>
-     {targets.map(([name,target,method])=><tr key={name}><td><strong>{name}</strong></td><td><span className="target-number">{target}</span></td><td>{method}</td><td><Badge tone="amber">Not independently verified</Badge></td></tr>)}</tbody></table></div>
-   </section>
-   <div className="research-bottom"><section className="surface"><div className="section-top"><div><h3>Evaluation protocol</h3><p>Requirements for a defensible research result</p></div></div>
-     <ol className="protocol-list"><li><span>1</span> Use identical held-out images and preprocessing configurations for all four engines.</li>
-     <li><span>2</span> Confirm image identifiers, ground-truth transcription, dosage fields and independent reviewer IDs.</li>
-     <li><span>3</span> Report character and word error, medication/dose accuracy, alert precision and recall.</li>
-     <li><span>4</span> Record model versions, inference environment, elapsed time and failure cases.</li></ol>
+const targets=[
+  ['Character error rate','10% or lower'],
+  ['Medicine name accuracy','90% or higher'],
+  ['Dose field accuracy','90% or higher'],
+  ['Overdose precision and recall','85% or higher'],
+  ['Age-check accuracy','85% or higher'],
+  ['Processing time','10 seconds or less'],
+];
+const percent=value=>Number.isFinite(value)?(value*100).toFixed(2)+'%':'No result';
+const displayName=name=>readers.find(([id])=>id===name)?.[1]||name;
+
+export default function Research({models={},historical={},benchmarks={}}){
+  const [selectedVariant,setSelectedVariant]=useState('original');
+  const installed=models.benchmark_engines||{};
+  const current=Object.entries(benchmarks.engines||{});
+  const past=Object.entries(historical.engines||{});
+
+  return <div className="stack-lg model-page">
+    <section className="comparison-page-hero">
+      <div className="comparison-page-icon"><BrainCircuit size={25}/></div>
+      <div><h2>Compare text-reading methods</h2>
+        <p>Choose one prescription image to see what each available method reads. Check the results against the original image.</p></div>
     </section>
-    <section className="surface"><div className="section-top"><div><h3>Clinical safety policy</h3><p>Non-negotiable research safeguards</p></div></div>
-     <div className="policy-item"><ShieldAlert size={18}/><span>Only provenance-linked, qualified-reviewer-approved drug rules can produce dosage flags.</span></div>
-     <div className="policy-item"><Database size={18}/><span>DailyMed and openFDA search results are source evidence, not automatically trusted dosage limits.</span></div>
-     <div className="policy-item"><Activity size={18}/><span>Unverified medicine identity, age or formulation must remain unresolved.</span></div>
-     <Notice type="warning">This workspace cannot approve medicines, prescribe or authorize dispensing.</Notice>
-    </section></div>
- </div>;
+
+    <section className="surface model-availability">
+      <div className="section-top"><div><h3>Available methods</h3><p>Methods installed on this computer can be used in the comparison below.</p></div></div>
+      <div className="model-cards">{readers.map(([id,name,description])=><div className="model-card" key={id}>
+        <span className={'model-card-icon '+(installed[id]?'is-ready':'')}>
+          {installed[id]?<CheckCircle2 size={20}/>:<Clock3 size={20}/>}</span>
+        <div><strong>{name}</strong><p>{description}</p></div>
+        <Badge tone={installed[id]?'teal':'amber'}>{installed[id]?'Ready':'Setup needed'}</Badge>
+      </div>)}</div>
+    </section>
+
+    <OCRComparison/>
+
+    <details className="surface model-evidence">
+      <summary>{benchmarks.status==='HUMAN_VERIFIED_TEST'?'Independent test results':'Current test results'} <span>{current.length?'View measured results':'No test results loaded'}</span></summary>
+      <div className="model-evidence-body">{current.length?<>
+        <p>{benchmarks.status==='HUMAN_VERIFIED_TEST'?'These results come from a separately checked test set.':'These are development measurements, not an independent accuracy result.'} A blank score means it could not be measured.</p>
+        <div className="table-scroll"><table className="data-table"><thead><tr>
+          <th>Method</th><th>Images processed</th><th>Character error</th><th>Medicine name</th><th>Dose checks</th><th>Age checks</th><th>95th-percentile time</th>
+        </tr></thead><tbody>{current.map(([name,item])=><tr key={name}>
+          <td><strong>{displayName(name)}</strong></td>
+          <td>{item.n_succeeded??'—'} / {item.n_total??'—'}</td>
+          <td>{percent(item.metrics?.ocr?.CER)}</td>
+          <td>{percent(item.metrics?.fields?.medicine?.accuracy)}</td>
+          <td>{item.dose_alert_evaluated_n??'—'} / {item.n_total??'—'}</td>
+          <td>{item.age_alert_evaluated_n??'—'} / {item.n_total??'—'}</td>
+          <td>{item.timing?.p95_s!=null?item.timing.p95_s+' s':'—'}</td>
+        </tr>)}</tbody></table></div>
+      </>:<p>No independently checked test results have been loaded. The live comparison above still works for individual images when a method is installed.</p>}</div>
+    </details>
+
+    {past.length>0&&<details className="surface model-evidence">
+      <summary>Earlier experiment results <span>{historical.n_aligned_images} medicine-word images</span></summary>
+      <div className="model-evidence-body">
+        <p>These older medicine-word measurements do not include the current fine-tuned model or prescription-level dose and age checks.</p>
+        {historical.variants&&<label className="model-variant">Image condition <select aria-label="Earlier experiment image condition" value={selectedVariant} onChange={e=>setSelectedVariant(e.target.value)}>
+          {Object.keys(historical.variants).map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+        <div className="table-scroll"><table className="data-table"><thead><tr><th>Method</th><th>Character error</th><th>Word error</th><th>Medicine name</th></tr></thead>
+          <tbody>{past.map(([name,item])=>{const variant=historical.variants?.[selectedVariant]?.[name]||{};
+            return <tr key={name}><td><strong>{name==='trocr_historical'?'Earlier TrOCR':displayName(name)}</strong></td>
+              <td>{percent(variant.CER??item.micro_CER)}</td>
+              <td>{selectedVariant==='original'?percent(item.micro_WER):'No result'}</td>
+              <td>{percent(variant.medicine_accuracy??item.medicine_accuracy)}</td></tr>})}</tbody></table></div>
+      </div>
+    </details>}
+
+    <details className="surface model-evidence">
+      <summary>About the measurements <span>How to interpret scores</span></summary>
+      <div className="model-evidence-body"><p>The goals below are evaluation targets, not results. Accuracy claims require separate images with independently checked text and medication labels.</p>
+        <div className="model-targets">{targets.map(([name,target])=><div key={name}><span>{name}</span><strong>{target}</strong></div>)}</div>
+      </div>
+    </details>
+  </div>;
 }

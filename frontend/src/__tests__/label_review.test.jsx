@@ -26,10 +26,9 @@ describe('reviewed source evidence',()=>{
     reviewed_age_rule:{status:'UNABLE_TO_VALIDATE'},
    }]}};
   render(<PrescriptionWorkspace detail={detail} onReviewed={()=>{}} onDeleted={()=>{}}/>);
-  fireEvent.click(screen.getByRole('button',{name:/find label evidence/i}));
-  fireEvent.click(await screen.findByRole('button',{name:/read source label sections/i}));
-  expect(await screen.findByText(/source status: unverified_label_evidence/i)).toBeTruthy();
-  expect(screen.getByText(/not been matched to the patient or approved as a dose rule/i)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:/view medicine sources/i}));
+  fireEvent.click(await screen.findByRole('button',{name:/read label details/i}));
+  expect(await screen.findByText(/possible product match/i)).toBeTruthy();
   expect(screen.getByText(/review age applicability/i)).toBeTruthy();
  });
 });

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Activity, BookOpen, ClipboardList, FilePlus2, HeartPulse, LayoutDashboard, ShieldCheck, X } from 'lucide-react';
 const items=[
-  {id:'overview',label:'Overview',icon:LayoutDashboard},
-  {id:'new',label:'New analysis',icon:FilePlus2},
-  {id:'library',label:'Prescription records',icon:ClipboardList},
-  {id:'research',label:'Research & benchmarks',icon:BookOpen},
+  {id:'overview',label:'Home',icon:LayoutDashboard},
+  {id:'new',label:'New prescription',icon:FilePlus2},
+  {id:'library',label:'Prescriptions',icon:ClipboardList},
+  {id:'research',label:'Model comparison',icon:BookOpen},
 ];
 export default function Sidebar({active,onChange,count=0,opened,onClose}) {
  return <>
@@ -25,10 +25,9 @@ export default function Sidebar({active,onChange,count=0,opened,onClose}) {
    <div className="side-bottom">
     <div className="safety-side-card">
      <div className="safety-heading"><ShieldCheck size={20}/> Human-led safety</div>
-     <p>OCR transcriptions and medication checks require professional review. Never use this tool for autonomous dispensing.</p>
-     <div className="environment"><span className="env-dot"/> LOCAL RESEARCH SYSTEM</div>
+     <p>Check the original prescription before relying on the text.</p>
     </div>
-    <div className="side-profile"><div className="profile-avatar"><Activity size={17}/></div><div><strong>Research workspace</strong><span>MedSafe-AI · Version 1.1</span></div></div>
+    <div className="side-profile"><div className="profile-avatar"><Activity size={17}/></div><div><strong>MedSafe AI</strong><span>Local workspace</span></div></div>
    </div>
   </aside>
  </>;

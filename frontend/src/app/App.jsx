@@ -8,7 +8,7 @@ import Library from '../features/Library.jsx';
 import Upload from '../features/Upload.jsx';
 import PrescriptionWorkspace from '../features/PrescriptionWorkspace.jsx';
 import Research from '../features/Research.jsx';
-const titles={overview:['Overview','Your prescription intelligence workspace'],new:['New analysis','Upload a prescription to begin the verification workflow'],library:['Prescription records','Review and manage your locally stored prescriptions'],workspace:['Prescription review','Verify transcription and inspect evidence-based safety checks'],research:['Research & benchmarks','OCR model availability, evaluation criteria and methodology']};
+const titles={overview:['Home','Your recent prescriptions and next steps'],new:['New prescription','Upload a prescription image to get started'],library:['Prescriptions','Open and manage saved prescriptions'],workspace:['Review prescription','Check the text and review the findings'],research:['Model comparison','Compare text-reading tools and results']};
 export default function App(){
  const [page,setPage]=useState('overview'),[menu,setMenu]=useState(false);
  const [records,setRecords]=useState([]),[stats,setStats]=useState({}),[models,setModels]=useState({}),[research,setResearch]=useState({});
@@ -31,17 +31,16 @@ export default function App(){
     <header className="topbar">
      <div className="topbar-left"><button className="icon-button menu-toggle" aria-label="Open navigation" onClick={()=>setMenu(true)}><Menu size={21}/></button>
       <span className="breadcrumbs">Workspace</span><span className="crumb-sep">/</span><strong>{title[0]}</strong></div>
-     <div className="topbar-actions"><span className="header-mode"><span className="env-dot"/> RESEARCH MODE</span>
-      <span className="top-avatar">MS</span></div>
+     <div className="topbar-actions"><span className="top-avatar">MS</span></div>
     </header>
     <div className="content">
-     <div className="page-heading"><div><div className="page-kicker">MEDSAFE-AI PLATFORM</div><h1>{title[0]}</h1><p>{title[1]}</p></div>
-      {page!=='new'&&<button className="button button-primary heading-action" onClick={()=>go('new')}><Plus size={18}/> New analysis</button>}</div>
+     <div className="page-heading"><div><h1>{title[0]}</h1><p>{title[1]}</p></div>
+      {page!=='new'&&<button className="button button-primary heading-action" onClick={()=>go('new')}><Plus size={18}/> New prescription</button>}</div>
      {error&&<div className="error-wrap"><Notice type="error">{error}</Notice><button className="text-button" onClick={()=>setError('')}>Dismiss</button></div>}
      {page==='overview'&&<Overview stats={stats} records={records} models={models} go={go} open={open}/>}
      {page==='library'&&<Library records={records} open={open} onDeleted={async()=>{await refresh();notify('Prescription permanently deleted')}} go={go}/>}
      {page==='new'&&<Upload models={models} onUploaded={async id=>{notify('Image processed. Verify the transcription before reviewing results.');await updated(id)}}/>}
-     {page==='workspace'&&<PrescriptionWorkspace detail={detail} models={models} onReviewed={async()=>{notify('Transcription confirmed. Safety checks remain advisory.');await updated(detail.id)}} onDeleted={async()=>{await refresh();setDetail(null);go('library')}}/>}
+     {page==='workspace'&&<PrescriptionWorkspace detail={detail} models={models} onReviewed={async()=>{notify('Text saved. Review the findings below.');await updated(detail.id)}} onDeleted={async()=>{await refresh();setDetail(null);go('library')}}/>}
      {page==='research'&&<Research research={research} models={models} historical={historical} benchmarks={benchmarks}/>}
      {busy&&<div className="loading-overlay" role="status">Loading prescription…</div>}
     </div>

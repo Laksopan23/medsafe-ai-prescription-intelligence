@@ -32,9 +32,9 @@ describe('modular workspace navigation', () => {
     const go=vi.fn();
     render(<Sidebar active="overview" onChange={go} count={3}
       opened={false} onClose={()=>{}}/>);
-    const current=screen.getByRole('button',{name:/overview/i});
+    const current=screen.getByRole('button',{name:/home/i});
     expect(current.getAttribute('aria-current')).toBe('page');
-    fireEvent.click(screen.getByRole('button',{name:/research & benchmarks/i}));
+    fireEvent.click(screen.getByRole('button',{name:/model comparison/i}));
     expect(go).toHaveBeenCalledWith('research');
   });
 });
@@ -43,8 +43,9 @@ describe('modular workspace navigation', () => {
 describe('prescription upload safeguards', () => {
   it('keeps the upload disabled until a file is chosen', () => {
     render(<Upload models={{}} onUploaded={()=>{}}/>);
-    expect(screen.getByRole('button',{name:/run OCR analysis/i}).disabled).toBe(true);
-    const select=screen.getByLabelText('Image preprocessing');
+    expect(screen.getByRole('button',{name:/read prescription/i}).disabled).toBe(true);
+    fireEvent.click(screen.getByText('Advanced options'));
+    const select=screen.getByLabelText('Image adjustment');
     expect(select.value).toBe('none');
     fireEvent.change(select,{target:{value:'clahe'}});
     expect(select.value).toBe('clahe');

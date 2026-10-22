@@ -20,7 +20,7 @@ export default function FindingsCenter({issues=[],onEdit}){
   {data.reviewedFlags.map((issue,i)=><section className="findings-cluster findings-ruleflag" key={'flag'+i}>
     <ShieldAlert size={21}/><div><small>Reviewed-rule warning · {issue.medicine_index?'Medication '+issue.medicine_index:'Prescription'}</small>
     <h4>{issue.code==='REVIEWED_RULE_THRESHOLD_EXCEEDED'?'Amount above a reviewed threshold':'Age outside a reviewed age range'}</h4>
-    <p>{issue.message}</p><p><strong>This is not a clinical overdose diagnosis.</strong> A qualified clinician must review the complete prescription.</p></div>
+    <p>{issue.message}</p></div>
   </section>)}
   {data.reviewItems.map((issue,i)=><section className="findings-cluster findings-review" key={'item'+i}>
     <ClipboardEdit size={21}/><div><small>Needs review</small><h4>{issueTitle(issue)}</h4><p>{issue.message}</p>
@@ -30,7 +30,6 @@ export default function FindingsCenter({issues=[],onEdit}){
    <details><summary><Info size={17}/> Other notes and OCR limitations ({data.diagnostics.length+data.notes.length})</summary>
     <ul>{[...data.diagnostics,...data.notes].map(item)}</ul></details>
   </div>}
-  {!data.total&&<div className="no-clearance">No warnings were recorded. This <strong>does not establish clinical safety.</strong> Human review and source-approved rules are still required.</div>}
-  <div className="findings-safety-footer"><ShieldAlert size={17}/><span>When dosing or age evidence is incomplete, validation remains <strong>Unable to validate</strong>, not “safe.”</span></div>
+  {!data.total&&<div className="no-clearance">No items were found to review. Check the dose and age results below for anything the app could not assess.</div>}
  </div>;
 }
