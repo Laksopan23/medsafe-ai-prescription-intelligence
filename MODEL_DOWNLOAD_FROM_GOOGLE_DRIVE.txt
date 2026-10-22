@@ -1,0 +1,92 @@
+MedSafe AI - Research Model Setup
+=================================
+
+The application requires the original fine-tuned research model. It must be
+copied from Google Drive before starting the application.
+
+IMPORTANT
+---------
+The model is not downloaded from public model websites and must not be
+replaced with another model.
+
+1. Install Google Drive for desktop
+------------------------------------
+
+Install Google Drive for desktop, sign in with the account that contains the
+MedSafe AI project, and wait until the model files are available in File
+Explorer.
+
+2. Source folder in Google Drive
+--------------------------------
+
+The model source folder is:
+
+G:\My Drive\MedSafe_AI_Project\02_models\trocr_finetuned_official_source_dev_notebook44\943e9bd2b5f1a54d\best_model_DEVELOPMENT_ONLY
+
+The drive letter may be different on another computer. Replace G: with the
+letter shown by Google Drive for desktop.
+
+The folder must contain these files:
+
+config.json
+generation_config.json
+model.safetensors
+preprocessor_config.json
+processor_config.json
+tokenizer.json
+tokenizer_config.json
+
+3. Destination folder in the project
+-------------------------------------
+
+Copy the files into:
+
+D:\Projects\Research Project\MedSafe_AI_Auto_Model_Setup_v3\medsafe_core\02_models\trocr_notebook44\best_model_DEVELOPMENT_ONLY
+
+For a different project location, use the folder where this file is stored,
+then append:
+
+02_models\trocr_notebook44\best_model_DEVELOPMENT_ONLY
+
+4. Copy command
+--------------
+
+Open PowerShell in the medsafe_core project folder and run:
+
+robocopy "G:\My Drive\MedSafe_AI_Project\02_models\trocr_finetuned_official_source_dev_notebook44\943e9bd2b5f1a54d\best_model_DEVELOPMENT_ONLY" "02_models\trocr_notebook44\best_model_DEVELOPMENT_ONLY" /E /Z /J /R:5 /W:5
+
+Replace G: if Google Drive uses another letter.
+
+5. Verify the model
+-------------------
+
+Run:
+
+python setup_and_verify_models.py --model-id "02_models\trocr_notebook44\best_model_DEVELOPMENT_ONLY"
+
+The verification must report that the research checkpoint is complete and
+the model smoke test passed.
+
+6. Start the application
+------------------------
+
+After verification, run:
+
+.\SETUP_AND_RUN_WINDOWS.bat
+
+Or use the automatic mounted-Drive helper:
+
+.\SETUP_FROM_DRIVE.bat
+
+7. If the source folder is not found
+-------------------------------------
+
+Check the following:
+
+- Google Drive for desktop is running and signed in.
+- The MedSafe_AI_Project folder has finished syncing.
+- The drive letter is correct.
+- model.safetensors exists in the source folder.
+- There is at least 1.3 GB of free disk space.
+
+Do not rename model.safetensors or substitute a different checkpoint.
