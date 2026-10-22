@@ -273,8 +273,18 @@ def recognize(data:bytes,engine='craft_trocr'):
     if engine == 'gemini':
         from .cloud_ocr import transcribe
         result = transcribe(data)
-        return {'text':result['text'],'engine':'gemini','regions':result.get('regions',[]),
-                'boxes':[],'warnings':result.get('warnings',[]),'confidence':None,
+        # Keep the image markings available in the review screen. The online
+        # reader returns transcription only, so use the local baseline's
+        # geometry for unverified visual guidance; never treat these boxes as
+        # proof that a particular word or medicine is correct.
+        try:
+            visual_regions = _tesseract(image).get('token_regions', [])
+        except Exception:
+            visual_regions = []
+        return {'text':result['text'],'engine':'gemini',
+                'boxes':[item['box'] for item in visual_regions],
+                'regions':visual_regions or result.get('regions',[]),
+                'warnings':result.get('warnings',[])+(['LOCAL_VISUAL_MARKINGS_ONLY'] if visual_regions else []),'confidence':None,
                 'provider':result.get('provider'),'model':result.get('model'),
                 'width':image.width,'height':image.height}
     if engine=='tesseract':
