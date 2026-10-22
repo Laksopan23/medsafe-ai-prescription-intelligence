@@ -26,9 +26,10 @@ export default function FindingsCenter({issues=[],onEdit}){
     <ClipboardEdit size={21}/><div><small>Needs review</small><h4>{issueTitle(issue)}</h4><p>{issue.message}</p>
     <button type="button" className="button button-ghost findings-action" onClick={onEdit}>Review transcription</button></div>
   </section>)}
-  {(data.diagnostics.length>0||data.notes.length>0)&&<div className="findings-technical">
-   <details><summary><Info size={17}/> Other notes and OCR limitations ({data.diagnostics.length+data.notes.length})</summary>
-    <ul>{[...data.diagnostics,...data.notes].map(item)}</ul></details>
+  {(data.textIssues.length>0||data.diagnostics.length>0||data.notes.length>0)&&<div className="findings-technical">
+   <details><summary><Info size={17}/> Text-reading notes ({data.textIssues.length+data.diagnostics.length+data.notes.length})</summary>
+    <p>These notes describe transcription or formatting issues. They are not age, dose, or medicine-safety results.</p>
+    <ul>{[...data.textIssues,...data.diagnostics,...data.notes].map(item)}</ul></details>
   </div>}
   {!data.total&&<div className="no-clearance">No items were found to review. Check the dose and age results below for anything the app could not assess.</div>}
  </div>;

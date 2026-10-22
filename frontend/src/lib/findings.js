@@ -9,7 +9,7 @@ export const issueTitle=issue=>(issue?.code||'REVIEW_REQUIRED').replaceAll('_','
 export function groupReviewFindings(raw=[]){
  const issues=Array.isArray(raw)?raw.filter(i=>i&&typeof i==='object'):[];
  const missing=new Map();
- const conflicts=[],reviewedFlags=[],reviewItems=[],diagnostics=[],notes=[];
+ const conflicts=[],reviewedFlags=[],reviewItems=[],textIssues=[],diagnostics=[],notes=[];
  for(const issue of issues){
   const code=String(issue.code||''),match=code.match(MISSING);
   if(match){
@@ -24,14 +24,16 @@ export function groupReviewFindings(raw=[]){
    conflicts.push(issue);
   }else if(DIAGNOSTICS.has(code)){
    diagnostics.push(issue);
-  }else if(issue.severity==='BLOCK'||code.startsWith('INVALID_')){
+  }else if(code.startsWith('INVALID_')){
+   textIssues.push(issue);
+  }else if(issue.severity==='BLOCK'){
    reviewItems.push(issue);
   }else{
    notes.push(issue);
   }
  }
  return {missing:[...missing.values()].sort((a,b)=>a.medicine_index-b.medicine_index),
-         conflicts,reviewedFlags,reviewItems,diagnostics,notes,
+         conflicts,reviewedFlags,reviewItems,textIssues,diagnostics,notes,
          total:issues.length};
 }
 export function missingFieldPhrase(fields=[]){return fields.map(f=>FIELD_LABELS[f]||f).join(', ')}
