@@ -31,7 +31,7 @@ describe('live four-engine comparison interactions',()=>{
   });
   const file=new File(['%PDF-sample'],'fictional.pdf',{type:'application/pdf'});
   render(<OCRComparison embedded initialFile={file}/>);
-  fireEvent.click(screen.getByRole('button',{name:/compare four local methods/i}));
+  fireEvent.click(screen.getByRole('button',{name:/compare five methods/i}));
   expect(await screen.findByText('Results on this prescription')).toBeTruthy();
   expect(screen.getByText(/Medicine: Alpha/)).toBeTruthy();
   expect(screen.getByText(/No verified transcription provided/)).toBeTruthy();
@@ -44,5 +44,6 @@ describe('live four-engine comparison interactions',()=>{
   const payload=request.mock.calls[0][1].body;
   expect(payload.get('file').name).toBe('fictional.pdf');
   expect(payload.get('reference_text')).toBeNull();
+  expect(payload.get('send_to_gemini')).toBe('true');
  });
 });

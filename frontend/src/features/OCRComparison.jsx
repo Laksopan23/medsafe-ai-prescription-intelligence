@@ -14,10 +14,10 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
  const picker=useRef(null);
  const [file,setFile]=useState(initialFile),[mode,setMode]=useState(initialMode);
  const [reference,setReference]=useState(''),[referenceOpen,setReferenceOpen]=useState(false);
- const [useGemini,setUseGemini]=useState(false);
+ const [useGemini,setUseGemini]=useState(embedded);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState(null);
  const [active,setActive]=useState('tesseract'),[preview,setPreview]=useState('');
- useEffect(()=>{if(embedded){setFile(initialFile);setResult(null);setError('')}},[embedded,initialFile]);
+ useEffect(()=>{if(embedded){setFile(initialFile);setUseGemini(true);setResult(null);setError('')}},[embedded,initialFile]);
  useEffect(()=>{setMode(initialMode);if(embedded)setResult(null)},[initialMode,embedded]);
  useEffect(()=>{if(!file||file.type==='application/pdf'){setPreview('');return}
   const url=URL.createObjectURL(file);setPreview(url);return()=>URL.revokeObjectURL(url);
@@ -66,8 +66,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
     <select id="comparison-mode" value={mode} onChange={e=>{setMode(e.target.value);setResult(null)}}>
      {MODES.map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>}
-   {embedded&&<label className="comparison-gemini"><input type="checkbox" checked={useGemini} onChange={e=>{setUseGemini(e.target.checked);setResult(null)}}/>
-    Include additional text reader (this sends the image outside this computer)</label>}
+   {embedded&&<div className="comparison-gemini">The comparison includes an additional text reader. This sends the image outside this computer.</div>}
    <button type="button" className="button button-primary comparison-submit" onClick={compare} disabled={!file||busy||file.size>8*1024*1024}>
     {busy?<LoaderCircle className="spin" size={17}/>:<ArrowRight size={17}/>}
     {busy?'Reading image…':useGemini?'Compare five methods':'Compare four local methods'}</button>

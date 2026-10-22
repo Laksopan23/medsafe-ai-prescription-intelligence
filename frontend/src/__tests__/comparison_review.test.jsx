@@ -37,7 +37,7 @@ describe('comparison workspace',()=>{
  it('requires a source image and can be opened from the upload page',()=>{
   render(<Upload models={{}} onUploaded={()=>{}}/>);
   fireEvent.click(screen.getByRole('button',{name:/compare text readers/i}));
-  expect(screen.getByRole('button',{name:/compare four local methods/i}).disabled).toBe(true);
+  expect(screen.getByRole('button',{name:/compare five methods/i}).disabled).toBe(true);
   expect(screen.queryByRole('button',{name:/read prescription/i})).toBeNull();
  });
  it('shows explicit no-reference behavior before any model runs',()=>{
