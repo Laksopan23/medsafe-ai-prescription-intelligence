@@ -6,6 +6,8 @@ Input regions are automatically generated proposals, NOT verified word boxes.
 """
 from __future__ import annotations
 import os
+import json
+import struct
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -28,6 +30,27 @@ _REQUIRED = ('config.json', 'model.safetensors', 'tokenizer.json', 'tokenizer_co
              'processor_config.json', 'preprocessor_config.json')
 
 
+def _safetensors_complete(path: Path) -> bool:
+    """Reject a cloud-sync or copy-in-progress weights file without loading it."""
+    try:
+        size=path.stat().st_size
+        with path.open('rb') as stream:
+            header_bytes=stream.read(8)
+            if len(header_bytes)!=8:
+                return False
+            header_length=struct.unpack('<Q',header_bytes)[0]
+            if not 2<=header_length<=20_000_000 or size<8+header_length:
+                return False
+            header=json.loads(stream.read(header_length))
+        ends=[item['data_offsets'][1] for key,item in header.items()
+              if key!='__metadata__' and isinstance(item,dict)
+              and isinstance(item.get('data_offsets'),list)
+              and len(item['data_offsets'])==2]
+        return bool(ends) and all(type(end) is int and end>=0 for end in ends) and size==8+header_length+max(ends)
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+        return False
+
+
 def configured_checkpoint() -> Path | None:
     raw = os.getenv('MEDSAFE_TROCR_MODEL_DIR', '').strip()
     if raw:
@@ -46,11 +69,14 @@ def checkpoint_status() -> dict:
                 'model_name': 'Notebook44 fine-tuned TrOCR (development-only)',
                 'reason': 'Notebook 44 model weights are not in the repository. Copy the complete best_model_DEVELOPMENT_ONLY folder into 02_models/trocr_notebook44/ or set MEDSAFE_TROCR_MODEL_DIR to its absolute local path. Run setup_notebook44_windows.bat on Windows.'}
     missing = [name for name in _REQUIRED if not (path / name).is_file()]
+    weights_complete=not missing and _safetensors_complete(path/'model.safetensors')
     return {'configured': True, 'files_present': not missing,
-            'ready_for_load': not missing, 'checkpoint_path': str(path),
-            'reason': ('Missing checkpoint assets: ' + ', '.join(missing)) if missing else None,
+            'ready_for_load': weights_complete, 'checkpoint_path': str(path),
+            'reason': ('Missing checkpoint assets: ' + ', '.join(missing)) if missing else
+                      ('Incomplete or invalid model.safetensors file') if not weights_complete else None,
             'model_name': 'Notebook44 fine-tuned TrOCR (development-only)',
-            'missing_files': missing, 'weights_verified_by_inference': False}
+            'missing_files': missing, 'weights_file_complete':weights_complete,
+            'weights_verified_by_inference': False}
 
 
 class ModelNotReady(RuntimeError):
@@ -69,6 +95,8 @@ def _load_model(model_path: str):
     missing = [name for name in _REQUIRED if not (model_dir / name).is_file()]
     if missing:
         raise ModelNotReady('Fine-tuned TrOCR checkpoint incomplete (missing ' + ', '.join(missing) + ').')
+    if not _safetensors_complete(model_dir/'model.safetensors'):
+        raise ModelNotReady('Fine-tuned TrOCR weights are incomplete or corrupt.')
     try:
         processor = TrOCRProcessor.from_pretrained(model_path, local_files_only=True)
         model = VisionEncoderDecoderModel.from_pretrained(model_path, local_files_only=True)
@@ -79,7 +107,7 @@ def _load_model(model_path: str):
         raise ModelNotReady('The fine-tuned TrOCR checkpoint could not be loaded; verify its files and compatible dependencies.') from exc
 
 
-def infer_regions(images: Sequence[Image.Image], *, max_new_tokens: int = 64) -> list[str]:
+def infer_regions(images: Sequence[Image.Image], *, max_new_tokens: int = 48) -> list[str]:
     """Run real model inference. Never silently fall back to a different model."""
     status = checkpoint_status()
     if not status['ready_for_load']:

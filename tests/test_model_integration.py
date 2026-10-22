@@ -71,6 +71,9 @@ def test_default_auto_uses_trained_adapter_when_ready(monkeypatch):
 def test_model_files_detected_without_loading(monkeypatch, tmp_path):
     for f in ('config.json','model.safetensors','tokenizer.json','tokenizer_config.json','processor_config.json','preprocessor_config.json'):
         (tmp_path/f).write_text('fixture')
+    import json,struct
+    header=json.dumps({'fixture.weight':{'dtype':'F32','shape':[1],'data_offsets':[0,4]}}).encode()
+    (tmp_path/'model.safetensors').write_bytes(struct.pack('<Q',len(header))+header+struct.pack('<f',1.0))
     monkeypatch.setenv('MEDSAFE_TROCR_MODEL_DIR',str(tmp_path))
     assert trocr.checkpoint_status()['ready_for_load'] is True
 

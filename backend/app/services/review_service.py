@@ -40,16 +40,22 @@ def assess_report(report):
         weight=parse_weight(fields.get('weight',''))
         if weight is not None and not 0<weight<=500:
             weight=None
-        result=assess_reviewed_rule(rule,dose=parsed[0] if parsed else None,
-                                    unit=parsed[1] if parsed else '',frequency=freq,
-                                    weight_kg=weight)
-        m['reviewed_dose_rule']=result
-        m['dose_validation_available']=result['status']!='NOT_EVALUATED'
         age_text=fields.get('age','')
         from medsafe.extraction import parse_age
         age=parse_age(age_text)
         if age is not None and not 0<=age<=120:
             age=None
+        applicable_dose_rule=rule
+        if rule is not None and type(rule.get('min_age_years')) in (int,float) and type(rule.get('max_age_years')) in (int,float):
+            if age is None or not rule['min_age_years']<=age<=rule['max_age_years']:
+                applicable_dose_rule=None
+        result=assess_reviewed_rule(applicable_dose_rule,dose=parsed[0] if parsed else None,
+                                    unit=parsed[1] if parsed else '',frequency=freq,
+                                    weight_kg=weight)
+        if rule is not None and applicable_dose_rule is None:
+            result={**result,'reason':'Patient age is missing or outside the reviewed dose-rule age range'}
+        m['reviewed_dose_rule']=result
+        m['dose_validation_available']=result['status']!='NOT_EVALUATED'
         age_check={'status':'UNABLE_TO_VALIDATE','reason':'No matched source-reviewed age interval and/or verified age'}
         if rule is not None and age is not None and type(rule.get('min_age_years')) in (int,float) and type(rule.get('max_age_years')) in (int,float):
             lo,hi=rule['min_age_years'],rule['max_age_years']

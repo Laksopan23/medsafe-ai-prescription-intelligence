@@ -9,7 +9,7 @@ This protocol evaluates the thesis objectives **Prescription OCR Accuracy + Over
 1. Collect independent held-out prescription images with written permission and appropriate de-identification. Never put patient images or transcripts in GitHub.
 2. Use a stable `image_id`, one image per row, and `split: "test"`. Do not use an image or a duplicate of it for training, model selection, preprocessing tuning, or thresholds.
 3. A human reviewer independently transcribes the **entire** prescription and verifies the medication, administered dose, frequency, age, and route fields. Record a non-identifying `reviewer_id` and set `human_verified: true` only after actual verification.
-4. If an image has multiple medications, annotate and evaluate each medication separately in a medication-level dataset. The current `benchmark.py` exact-field metric uses the first parsed block and must **not** be represented as multi-medication accuracy.
+4. If an image has multiple medications, add a human-verified `gold_medications` array in image reading order. `benchmark.py` reports separate ordered medication-level accuracy, missing and spurious entries. The legacy prescription-level exact-field metric concatenates multiple entries with ` | ` and must **not** be represented as medication-level accuracy. If no `gold_medications` are provided, medication-level accuracy is unavailable.
 5. For overdose and age validation, independently label `gold_alert` and `gold_age_flag` as actual booleans **only** when supported by a qualified reviewer and applicable product/route/indication/weight/age-specific reference. Do not infer these labels from synthetic fixtures or the same rule engine under test.
 6. If a label is not supportable, omit it and report the reduced evaluated sample count. **Do not encode unknown as false.**
 
@@ -22,6 +22,8 @@ Paths are relative to the manifest file. The following is a schema **example**, 
 ```
 
 The benchmark validates image paths, file hashes, unique IDs, and human verification flags; those checks cannot establish that a label is *truthful*. Audit the human review process separately.
+
+For multiple medicines, add `"gold_medications":[{"medicine":"[first verified medicine]","dose":"[first dose]"},{"medicine":"[second verified medicine]","dose":"[second dose]"}]`. A missing or extra candidate is counted; fuzzy medicine-name matching is deliberately not used. This is image-order alignment, so reviewers must confirm order as well as text.
 
 ### Run all four OCR engines on the same inputs
 
@@ -70,4 +72,5 @@ Thesis targets are **CER ≤10%, medicine and dose field accuracy ≥90%, overdo
 - Synthetic `SYNTHMED-` cases are for **software development only**. They cannot establish clinical sensitivity, specificity, or patient safety.
 - DailyMed and openFDA label text is evidence for professional interpretation, **not** an automatically verified numeric dosing rule.
 - The Notebook 44 checkpoint is not included in GitHub. Copy or mount the weights from the project's approved storage; do not replace it with a pretrained public model and call it the fine-tuned result.
+- The current Drive independent-label CSV contains blank ground-truth cells and `human_verified=false`; it is a candidate inventory, not a runnable independent benchmark. No target is met by that file.
 - The application is localhost-only and lacks production authentication and patient-data governance. Do not deploy it on the public Internet.

@@ -17,6 +17,17 @@ def test_synthetic_dataset_is_deterministic_and_unverified(tmp_path):
     with pytest.raises(ValueError,match='human-verification'):
         read_manifest(tmp_path/'synthetic'/'manifest.jsonl')
 
+
+def test_synthetic_edge_cases_do_not_invent_clinical_labels(tmp_path):
+    metadata=generate(tmp_path/'synthetic_variants',count=16,seed=44,allow_small=True)
+    rows=[json.loads(line) for line in (tmp_path/'synthetic_variants'/'manifest.jsonl').read_text().splitlines()]
+    assert all(metadata['case_counts'][kind]>0 for kind in
+               ('complete','multi_medication','missing_dose','ambiguous_schedule','conflicting_dose'))
+    assert all('gold_alert' not in row for row in rows if row['case_type']!='complete')
+    assert all('gold_age_flag' not in row for row in rows if row['case_type']=='multi_medication')
+    assert all(len(row['gold_medications'])==2 for row in rows if row['case_type']=='multi_medication')
+    assert all('image_conditions' in row for row in rows)
+
 def test_benchmark_allows_explicit_synthetic_development_mode(tmp_path,monkeypatch):
     root=tmp_path/'synthetic';generate(root,count=3,seed=30,allow_small=True)
     def fake_recognize(data,engine):

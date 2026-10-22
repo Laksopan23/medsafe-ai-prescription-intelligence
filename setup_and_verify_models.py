@@ -1,6 +1,7 @@
 """Verify the MedSafe-AI research checkpoint and real inference."""
 from __future__ import annotations
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -40,7 +41,7 @@ def main(argv=None):
     Path(os.environ["EASYOCR_MODULE_PATH"]).mkdir(parents=True,exist_ok=True)
     report={"status":"FAILED","model":args.model_id,"detector":"EasyOCR CRAFT",
             "python":sys.version.split()[0],"platform":platform.platform(),
-            "image":str(args.image),"steps":{},"cache_paths":{"hf":os.environ["HF_HOME"],
+            "image_filename":args.image.name,"steps":{},"cache_paths":{"hf":os.environ["HF_HOME"],
             "easyocr":os.environ["EASYOCR_MODULE_PATH"]}}
     start=time.monotonic()
     try:
@@ -57,16 +58,23 @@ def main(argv=None):
         print("[2/3] Loading the MedSafe-AI research checkpoint...",flush=True)
         _recognizer()
         report["steps"]["trocr_loaded"]=True
+        weights=Path(args.model_id)/'model.safetensors'
+        report['model_weight_bytes']=weights.stat().st_size
+        with weights.open('rb') as stream:
+            report['model_weight_sha256']=hashlib.file_digest(stream,'sha256').hexdigest()
         if not args.download_only:
             print("[3/3] Running real OCR on test image...",flush=True)
             if not args.image.is_file():
                 raise FileNotFoundError(f"Sample image missing: {args.image}")
-            result=recognize(args.image.read_bytes(),engine="craft_trocr")
+            image_bytes=args.image.read_bytes()
+            result=recognize(image_bytes,engine="craft_trocr")
             report["steps"]["inference_completed"]=True
+            report["image_sha256"]=hashlib.sha256(image_bytes).hexdigest()
             report["regions"]=len(result["regions"])
             report["nonempty_predictions"]=sum(bool(r["text"].strip()) for r in result["regions"])
             report["warnings"]=result["warnings"]
-            report["transcription_preview"]=result["text"][:800]
+            report["transcription_characters"]=len(result["text"])
+            report["transcription_sha256"]=hashlib.sha256(result["text"].encode('utf-8')).hexdigest()
             if report["regions"]<1 or report["nonempty_predictions"]<1:
                 raise RuntimeError("OCR produced no readable regions; setup is not verified.")
         report["status"]="PASSED"

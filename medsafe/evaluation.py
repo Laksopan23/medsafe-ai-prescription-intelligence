@@ -3,11 +3,23 @@ from __future__ import annotations
 import csv
 import json
 import re
+import math
 from pathlib import Path
 from difflib import SequenceMatcher
 
 FIELDS=('medicine','dose','frequency','age','route','weight','strength')
 MIN_INDEPENDENT_TEST_IMAGES=50
+
+
+def wilson_interval(success, total, z=1.96):
+    """Approximate 95% binomial interval; undefined with no denominator."""
+    if total <= 0:
+        return None
+    p=success/total
+    denominator=1+z*z/total
+    centre=(p+z*z/(2*total))/denominator
+    radius=z*math.sqrt(p*(1-p)/total+z*z/(4*total*total))/denominator
+    return [max(0,centre-radius),min(1,centre+radius)]
 def norm(s): return re.sub(r'\s+',' ',str(s or '').strip()).casefold()
 def edit_distance(a,b):
     p=list(range(len(b)+1))
@@ -35,15 +47,26 @@ def evaluate(records):
             a=norm(row['gold_transcript']);b=norm(row['predicted_transcript'])
             chars+=len(a);errors+=edit_distance(a,b)
             aw=a.split();bw=b.split();words+=len(aw);word_errors+=edit_distance(aw,bw)
+        if ('gold_alert' in row) != ('predicted_alert' in row):
+            raise ValueError('Incomplete gold_alert/predicted_alert evaluation pair')
         if 'gold_alert' in row and 'predicted_alert' in row:
             g=row['gold_alert'];p=row['predicted_alert']
             if type(g) is not bool or type(p) is not bool: raise ValueError('Alerts must be labeled booleans')
             tp+=int(g and p);fp+=int(not g and p);fn+=int(g and not p);tn+=int(not g and not p)
     age_metrics=classification_metrics(rows,'gold_age_flag','predicted_age_flag')
     elapsed_metrics=latency_metrics(rows)
+    alert_n=tp+fp+fn+tn
     return {'age_alerts':age_metrics,'timing':elapsed_metrics,'n':len(rows),'fields':{f:{**c,'accuracy':c['correct']/c['total'] if c['total'] else None} for f,c in counts.items()},
             'ocr':{'CER':errors/chars if chars else None,'WER':word_errors/words if words else None,'reference_characters':chars,'reference_words':words},
-            'alerts':{'n':tp+fp+fn+tn,'tp':tp,'fp':fp,'fn':fn,'tn':tn,'precision':tp/(tp+fp) if tp+fp else None,'recall':tp/(tp+fn) if tp+fn else None, 'accuracy':(tp+tn)/(tp+fp+fn+tn) if tp+fp+fn+tn else None}}
+            'alerts':{'n':alert_n,'abstained_n':len(rows)-alert_n,
+                      'coverage':alert_n/len(rows),'tp':tp,'fp':fp,'fn':fn,'tn':tn,
+                      'precision':tp/(tp+fp) if tp+fp else None,
+                      'precision_95ci':wilson_interval(tp,tp+fp),
+                      'recall':tp/(tp+fn) if tp+fn else None,
+                      'recall_95ci':wilson_interval(tp,tp+fn),
+                      'specificity':tn/(tn+fp) if tn+fp else None,
+                      'accuracy':(tp+tn)/alert_n if alert_n else None,
+                      'accuracy_95ci':wilson_interval(tp+tn,alert_n)}}
 
 def classification_metrics(rows, gold_key, predicted_key):
     """Report exact binary classifications; missing paired labels never become negatives."""
@@ -60,10 +83,16 @@ def classification_metrics(rows, gold_key, predicted_key):
             raise ValueError('Alert ground truth and predictions must be booleans')
         count+=1;tp+=int(g and p);fp+=int(not g and p)
         fn+=int(g and not p);tn+=int(not g and not p)
-    return {'n':count,'tp':tp,'fp':fp,'fn':fn,'tn':tn,
+    return {'n':count,'abstained_n':len(rows)-count,
+            'coverage':count/len(rows) if rows else None,
+            'tp':tp,'fp':fp,'fn':fn,'tn':tn,
             'accuracy':(tp+tn)/count if count else None,
+            'accuracy_95ci':wilson_interval(tp+tn,count),
             'precision':tp/(tp+fp) if tp+fp else None,
-            'recall':tp/(tp+fn) if tp+fn else None}
+            'precision_95ci':wilson_interval(tp,tp+fp),
+            'recall':tp/(tp+fn) if tp+fn else None,
+            'recall_95ci':wilson_interval(tp,tp+fn),
+            'specificity':tn/(tn+fp) if tn+fp else None}
 
 def latency_metrics(rows):
     """Measured end-to-end timings, not model-loading estimates."""
