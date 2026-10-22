@@ -24,6 +24,13 @@ _FREQUENCIES = {'once daily': 1, 'daily': 1, 'once a day': 1, 'od': 1,
                 'bd': 2, 'tds': 3, 'qd': 1}
 _ROUTES = {'oral', 'po', 'topical', 'iv', 'im', 'subcutaneous', 'inhaled', 'rectal', 'ophthalmic'}
 
+def _clean_medicine(value: str) -> str:
+    """Clean presentation noise without correcting the medicine identity."""
+    value = re.sub(r'[*_`]', '', str(value)).strip()
+    value = re.sub(r'^(?:\(?\d{1,2}\)?[.)\-:]?\s*)', '', value)
+    value = re.sub(r'^(?:tab(?:let)?|cap(?:sule)?|syr(?:up)?|inj(?:ection)?)\.?\s+', '', value, flags=re.I)
+    return re.sub(r'\s+', ' ', value).strip(' .:-')
+
 
 def extract(text: str) -> dict[str, Any]:
     """Return extracted raw strings and parse-uncertainty flags, not guesses."""
@@ -36,7 +43,8 @@ def extract(text: str) -> dict[str, Any]:
         for key, pattern in patterns.items():
             match = pattern.match(line)
             if match:
-                occurrences[key].append(match.group(1).strip())
+                value = match.group(1).strip()
+                occurrences[key].append(_clean_medicine(value) if key == 'medicine' else value)
                 break
     for key in fields:
         if occurrences[key]:
