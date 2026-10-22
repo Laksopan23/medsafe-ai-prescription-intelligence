@@ -35,10 +35,15 @@ def transcribe(image_bytes: bytes) -> dict:
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}', model):
         raise GeminiUnavailable('Invalid Gemini model name.')
     payload = {'contents': [{'role': 'user', 'parts': [
-        {'text': ('Transcribe all visible text in this prescription image in reading order. '
-                  'Preserve line breaks, numbers, units and headings. Do not infer missing '
-                  'words, correct medicines, summarize, assess safety, or add commentary. '
-                  'Use [unclear] for characters you cannot read.')},
+        {'text': ('Read this prescription image carefully and return a complete, faithful transcription. '
+                  'Do not guess, correct medicines, assess safety, or add commentary. Use [unclear] '
+                  'for characters you cannot read. Preserve the original values, numbers, units, '
+                  'instructions, and reading order. Normalize the visible content into plain text '
+                  'using this exact structure, repeating the medication block for every medicine: '
+                  'Patient name: ...; Age: ...; Sex: ...; then Medicine: ...; Dose: ...; '
+                  'Strength: ...; Frequency: ...; Route: ...; Duration: ...; Instructions: .... '
+                  'Omit a field when it is not visible. Keep the original prescription wording '
+                  'after the structured fields when useful.')},
         {'inline_data': {'mime_type': 'image/png',
                          'data': base64.b64encode(image_bytes).decode('ascii')}},
     ]}], 'generationConfig': {'temperature': 0, 'maxOutputTokens': 4096}}

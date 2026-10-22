@@ -42,7 +42,7 @@ def validate(fields: dict, *, conflicting_fields=(), duplicate_fields=(), ocr_co
         problems.append(finding('MISSING_DOSE', 'BLOCK', 'Dose is missing.', 'dose'))
     dose = number_and_unit(dose_text) if dose_text else None
     if dose_text and not dose:
-        problems.append(finding('INVALID_DOSE_FORMAT', 'BLOCK', 'Use a positive dose with a recognized unit (mg, g, mcg or mL).', 'dose'))
+        problems.append(finding('INVALID_DOSE_FORMAT', 'BLOCK', 'Use a positive dose with a recognized unit (mg, g, mcg, mL, tablet or capsule).', 'dose'))
     elif dose and (not math.isfinite(dose[0]) or dose[0] <= 0 or (dose[0] * (1000 if dose[1]=='g' else 0.001 if dose[1]=='mcg' else 1)) > 100000):
         problems.append(finding('INVALID_DOSE_VALUE', 'BLOCK', 'Dose must be a realistic positive finite number; requires review.', 'dose'))
     if not freq_text:

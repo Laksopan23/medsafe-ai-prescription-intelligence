@@ -37,6 +37,8 @@ export default function ImageEvidence({src,width,height,regions=[],alt='Original
       <rect x={box.x1} y={box.y1} width={box.x2-box.x1} height={box.y2-box.y1}
        fill="rgba(75,99,233,0.10)" stroke="#4663f0"
        strokeWidth={Math.max(1.5,width/450)} rx={Math.max(1,width/700)}/>
+      <rect x={box.x1} y={Math.max(0,box.y1-18)} width={Math.min(width-box.x1,Math.max(34,Math.min(260,box.text.length*7+24)))} height="18" fill="#4663f0" rx="3"/>
+      <text x={box.x1+5} y={Math.max(13,box.y1-5)} fill="white" fontSize={Math.max(10,width/95)} fontWeight="700">{box.index+'. '+box.text.slice(0,32)}{box.text.length>32?'…':''}</text>
       <title>{'Region '+box.index+': '+box.text}</title>
     </g>)}
    </svg>}

@@ -14,7 +14,7 @@ _POPULATION = re.compile(r'^(?:population|verified\s*population)\s*[:=-]\s*(.*?)
 _STRENGTH = re.compile(r'^(?:strength|product\s*strength)\s*[:=-]\s*(.*?)\s*$', re.I)
 _FORMULATION = re.compile(r'^(?:formulation|dosage\s*form)\s*[:=-]\s*(.*?)\s*$', re.I)
 _WEIGHT = re.compile(r'^(?:weight|patient\s*weight)\s*[:=-]\s*(.*?)\s*$', re.I)
-_DOSE_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*(mg|mcg|µg|ug|g|ml|mL)\s*$', re.I)
+_DOSE_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*(mg|mcg|µg|ug|g|ml|mL|tablets?|tabs?|capsules?|caps?|puffs?|drops?)\s*$', re.I)
 _AGE_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y)?\s*$', re.I)
 _WEIGHT_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*kg\s*$', re.I)
 _FREQUENCIES = {'once daily': 1, 'daily': 1, 'once a day': 1, 'od': 1,
