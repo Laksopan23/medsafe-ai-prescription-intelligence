@@ -9,7 +9,7 @@ LABELS = {
     'doctor_name': r'(?:doctor|dr\.?|physician|prescriber)',
     'doctor_registration': r'(?:registration\s*(?:no\.?|number)|(?:slmc|license|licence)\s*(?:no\.?|number)?)',
     'doctor_specialization': r'(?:speciali[sz]ation|specialty)',
-    'patient_name': r'(?:patient(?:\s+name)?|pt\.?\s*name)',
+    'patient_name': r'(?:patient(?:\s+name)?|pt\.?\s*name|name)',
     'patient_age': r'(?:patient\s+age|age)',
     'patient_dob': r'(?:date\s+of\s+birth|dob)',
     'patient_sex': r'(?:sex|gender)',

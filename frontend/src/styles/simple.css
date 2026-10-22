@@ -35,3 +35,5 @@
 .comparison-stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 22px 18px}
 .comparison-stats>summary{cursor:pointer;color:#40536e;font-size:12px;font-weight:800;padding:14px 2px}
 .comparison-stats .comparison-tablescroll{overflow-x:auto}
+.comparison-gemini{grid-column:1/-1;display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.5;color:#40536e}
+.comparison-gemini input{margin-top:2px;accent-color:#5365d9}

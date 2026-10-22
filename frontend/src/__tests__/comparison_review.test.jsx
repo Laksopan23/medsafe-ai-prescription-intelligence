@@ -37,12 +37,12 @@ describe('comparison workspace',()=>{
  it('requires a source image and can be opened from the upload page',()=>{
   render(<Upload models={{}} onUploaded={()=>{}}/>);
   fireEvent.click(screen.getByRole('button',{name:/compare text readers/i}));
-  expect(screen.getByRole('button',{name:/run four-model comparison/i}).disabled).toBe(true);
+  expect(screen.getByRole('button',{name:/compare four local methods/i}).disabled).toBe(true);
   expect(screen.queryByRole('button',{name:/read prescription/i})).toBeNull();
  });
  it('shows explicit no-reference behavior before any model runs',()=>{
   render(<OCRComparison/>);
-  expect(screen.getByText(/one prescription, the same preprocessing/i)).toBeTruthy();
-  expect(screen.getByRole('button',{name:/run four-model comparison/i}).disabled).toBe(true);
+  expect(screen.getByText(/compare local readers on the same image/i)).toBeTruthy();
+  expect(screen.getByRole('button',{name:/compare four local methods/i}).disabled).toBe(true);
  });
 });

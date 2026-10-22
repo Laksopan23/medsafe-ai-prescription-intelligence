@@ -2,6 +2,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .env
+medsafe/cloud_local.py
 runtime_data/
 model_cache/
 .tmp/

@@ -14,6 +14,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from medsafe.evaluation import edit_distance, norm
 from medsafe.extraction import extract_prescription
 from medsafe.ocr_product import OCRUnavailable, recognize
+from medsafe.cloud_ocr import GeminiUnavailable, transcribe as gemini_transcribe
 from medsafe.preprocessing import MODES, prepare_ocr_bytes
 
 router=APIRouter(prefix="/api/compare",tags=["research"])
@@ -66,6 +67,7 @@ async def compare_ocr(
     file: UploadFile=File(...),
     preprocess: str=Query("none",pattern="^(none|clahe|adaptive|deskew_clahe)$"),
     reference_text: str=Form(""),
+    send_to_gemini: bool=Form(False),
 ):
     """Return per-engine transcriptions and measured durations, including failures.
 
@@ -93,10 +95,10 @@ async def compare_ocr(
         raise HTTPException(422,"Image preprocessing unavailable: "+str(exc)[:210]) from exc
     digest=hashlib.sha256(data).hexdigest()
     outputs={}
-    for engine in ENGINES:
+    for engine in (*ENGINES, *(("gemini",) if send_to_gemini else ())):
         started=time.perf_counter()
         try:
-            result=recognize(prepared,engine=engine)
+            result=gemini_transcribe(prepared) if engine=="gemini" else recognize(prepared,engine=engine)
             outputs[engine]={
                 "status":"COMPLETED",
                 "text":str(result.get("text") or ""),
@@ -106,8 +108,10 @@ async def compare_ocr(
                 "extraction":preview_extraction(str(result.get("text") or "")),
                 "reference_metrics":reference_metrics(str(result.get("text") or ""),reference_text),
                 "clinical_clearance":False,
+                "provider":result.get("provider", "Local"),
+                "model":result.get("model"),
             }
-        except (OCRUnavailable,RuntimeError,ImportError,ValueError) as exc:
+        except (OCRUnavailable,GeminiUnavailable,RuntimeError,ImportError,ValueError) as exc:
             outputs[engine]={
                 "status":"UNAVAILABLE",
                 "text":None,
@@ -121,7 +125,8 @@ async def compare_ocr(
         "preprocessing":processing,
         "engines":outputs,
         "completed_engines":sum(x["status"]=="COMPLETED" for x in outputs.values()),
-        "n_engines":len(ENGINES),
+        "n_engines":len(outputs),
+        "external_image_requested":send_to_gemini,
         "source_retained":False,
         "reference_used":bool(reference_text.strip()),
         "reference_independently_verified":False,

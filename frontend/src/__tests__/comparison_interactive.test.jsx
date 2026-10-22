@@ -31,7 +31,7 @@ describe('live four-engine comparison interactions',()=>{
   });
   const file=new File(['%PDF-sample'],'fictional.pdf',{type:'application/pdf'});
   render(<OCRComparison embedded initialFile={file}/>);
-  fireEvent.click(screen.getByRole('button',{name:/run four-model comparison/i}));
+  fireEvent.click(screen.getByRole('button',{name:/compare four local methods/i}));
   expect(await screen.findByText('Results on this prescription')).toBeTruthy();
   expect(screen.getByText(/Medicine: Alpha/)).toBeTruthy();
   expect(screen.getByText(/No verified transcription provided/)).toBeTruthy();

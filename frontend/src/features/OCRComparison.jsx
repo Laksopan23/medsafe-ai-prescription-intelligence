@@ -14,6 +14,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
  const picker=useRef(null);
  const [file,setFile]=useState(initialFile),[mode,setMode]=useState(initialMode);
  const [reference,setReference]=useState(''),[referenceOpen,setReferenceOpen]=useState(false);
+ const [useGemini,setUseGemini]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState(null);
  const [active,setActive]=useState('tesseract'),[preview,setPreview]=useState('');
  useEffect(()=>{if(embedded){setFile(initialFile);setResult(null);setError('')}},[embedded,initialFile]);
@@ -34,12 +35,14 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
   try{
    const payload=new FormData();payload.append('file',file);
    if(reference.trim())payload.append('reference_text',reference);
+   if(useGemini)payload.append('send_to_gemini','true');
    const data=await request('/compare?preprocess='+encodeURIComponent(mode),{method:'POST',body:payload});
    setResult(data);
-   setActive(ENGINES.find(name=>data.engines?.[name]?.status==='COMPLETED')||ENGINES[0]);
+   setActive([...ENGINES,'gemini'].find(name=>data.engines?.[name]?.status==='COMPLETED')||ENGINES[0]);
   }catch(exc){setError(exc.message)}finally{setBusy(false)}
  };
- const completed=ENGINES.filter(engine=>result?.engines?.[engine]?.status==='COMPLETED');
+ const shownEngines=[...ENGINES,...(result?.engines?.gemini?['gemini']:[])];
+ const completed=shownEngines.filter(engine=>result?.engines?.[engine]?.status==='COMPLETED');
  const ranked=completed.filter(engine=>result?.engines?.[engine]?.reference_metrics?.cer!=null)
   .sort((a,b)=>result.engines[a].reference_metrics.cer-result.engines[b].reference_metrics.cer);
  const top=ranked[0];
@@ -47,7 +50,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
  const extracted=selected.extraction||{};
  return <section className={'surface comparison-panel'+(embedded?' comparison-embedded':'')}>
   <div className="section-top"><div><h3>Try the same image with each method</h3>
-   <p>One prescription, the same preprocessing, four independent recognizers. Choose a method below to read its text.</p></div></div>
+   <p>Compare local readers on the same image. You can also opt in to a cloud comparison.</p></div></div>
   <div className="comparison-form">
    {!embedded&&<div className="comparison-source">
     <input ref={picker} type="file" accept=".png,.jpg,.jpeg,.webp,.pdf" hidden onChange={e=>choose(e.target.files?.[0])}/>
@@ -63,9 +66,11 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
     <select id="comparison-mode" value={mode} onChange={e=>{setMode(e.target.value);setResult(null)}}>
      {MODES.map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>}
+   <label className="comparison-gemini"><input type="checkbox" checked={useGemini} onChange={e=>{setUseGemini(e.target.checked);setResult(null)}}/>
+    Include Google-hosted text reader (sends this image to Google; use only with permission)</label>
    <button type="button" className="button button-primary comparison-submit" onClick={compare} disabled={!file||busy||file.size>8*1024*1024}>
     {busy?<LoaderCircle className="spin" size={17}/>:<ArrowRight size={17}/>}
-    {busy?'Running all available engines…':'Run four-model comparison'}</button>
+    {busy?'Reading image…':useGemini?'Compare five methods':'Compare four local methods'}</button>
   </div>
   <details className="comparison-reference" open={referenceOpen} onToggle={e=>setReferenceOpen(e.currentTarget.open)}>
    <summary>Optional: compare against a manually checked reference transcript</summary>
@@ -85,7 +90,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
    <details className="comparison-stats"><summary>View scores and timing</summary>
    <div className="comparison-tablescroll"><table className="comparison-table"><caption>Current image: method output comparison. Detected fields are not an accuracy score.</caption>
     <thead><tr><th scope="col">OCR engine</th><th scope="col">Inference time</th><th scope="col">Text regions</th><th scope="col">Fields detected</th><th scope="col">CER</th><th scope="col">WER</th><th scope="col">Availability</th></tr></thead>
-    <tbody>{ENGINES.map(engine=>{const r=result.engines?.[engine]||{},ok=r.status==='COMPLETED';
+    <tbody>{shownEngines.map(engine=>{const r=result.engines?.[engine]||{},ok=r.status==='COMPLETED';
      return <tr key={engine} className={engine===active?'comparison-selected-row':''}>
       <td><button type="button" className="comparison-model-link" onClick={()=>setActive(engine)} aria-pressed={active===engine}>{formatEngine(engine)}</button></td>
       <td>{ok?SECONDS(r.elapsed_seconds):'—'}</td><td>{ok?r.region_count??0:'—'}</td>
@@ -95,7 +100,7 @@ export default function OCRComparison({initialFile=null,initialMode='none',embed
    <p className="comparison-metric-note">{result.reference_used?'Text error rates compare against the text you entered for this image.':'No verified transcription provided: text accuracy cannot be measured for this image.'} Time shown is for each reading method.</p>
    </details>
    <div className="comparison-switcher" role="group" aria-label="Inspect OCR engine results">
-    {ENGINES.map(engine=><button type="button" key={engine} className={engine===active?'is-active':''} aria-pressed={active===engine} onClick={()=>setActive(engine)}>{formatEngine(engine)}</button>)}
+    {shownEngines.map(engine=><button type="button" key={engine} className={engine===active?'is-active':''} aria-pressed={active===engine} onClick={()=>setActive(engine)}>{formatEngine(engine)}</button>)}
    </div>
    <div className="comparison-inspector">
     <div className="comparison-inspector-heading"><h4>{formatEngine(active)} — detailed output</h4><Badge tone={selected.status==='COMPLETED'?'teal':'amber'}>{statusLabel(selected.status)}</Badge></div>

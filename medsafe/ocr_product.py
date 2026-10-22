@@ -23,6 +23,7 @@ class OCRUnavailable(RuntimeError):
 
 def status():
     import importlib.util, shutil
+    from .cloud_ocr import configured as gemini_configured
     try:
         import torch
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -42,6 +43,7 @@ def status():
             'paddleocr': importlib.util.find_spec('paddleocr') is not None and importlib.util.find_spec('paddle') is not None,
             'trocr': trocr_ready,
             'craft_trocr': trocr_ready,
+            'gemini': gemini_configured(),
         },
         'recognizer': str(configured_checkpoint() or 'NOTEBOOK44_CHECKPOINT_NOT_CONFIGURED'),
         'notebook44_checkpoint':checkpoint, 'torch_installed': torch_installed,

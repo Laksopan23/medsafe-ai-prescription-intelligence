@@ -8,6 +8,7 @@ const readers=[
   ['easyocr','EasyOCR','Handwriting reader'],
   ['paddleocr','PaddleOCR','Document reader'],
   ['craft_trocr','CRAFT + TrOCR','Fine-tuned handwriting reader'],
+  ['gemini','Google-hosted text reader','Optional cloud reader'],
 ];
 const targets=[
   ['Character error rate','10% or lower'],

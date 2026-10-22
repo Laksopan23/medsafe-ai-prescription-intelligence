@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_MED = re.compile(r'^(?:medicine|medication|drug|name)\s*[:=-]\s*(.*?)\s*$', re.I)
+_MED = re.compile(r'^(?:medicine|medication|drug)\s*[:=-]\s*(.*?)\s*$', re.I)
 _DOSE = re.compile(r'^(?:dose|dosage|amount)\s*[:=-]\s*(.*?)\s*$', re.I)
 _FREQ = re.compile(r'^(?:frequency|freq|schedule)\s*[:=-]\s*(.*?)\s*$', re.I)
 _AGE = re.compile(r'^(?:patient\s*age|age)\s*[:=-]\s*(.*?)\s*$', re.I)
@@ -89,6 +89,8 @@ def extract_prescription(text: str, *, allow_unlabeled: bool = False) -> list[di
     markers=[i for i,line in enumerate(lines) if _MED.match(line)]
     if allow_unlabeled and not markers:
         return extract_unlabeled_candidates(text)
+    if not markers and any(re.fullmatch(r'R\s*x\s*[:.]?', line, re.I) for line in lines):
+        return extract_unlabeled_candidates(text)
     if len(markers)<=1:
         return [extract(text)]
     shared=[line for line in lines if _AGE.match(line) or _WEIGHT.match(line)]
@@ -106,8 +108,9 @@ def extract_prescription(text: str, *, allow_unlabeled: bool = False) -> list[di
 # extraction requires a prescription-form marker AND a medicine-like token.
 # Strength is NEVER treated as administered dose; OCR does not establish identity.
 _UNLABELED_RX = re.compile(
-    r"^\s*(?:(?:rx\s*[:.]?\s*)?)(?:tab(?:let)?|cap(?:sule)?|syr(?:up)?|inj(?:ection)?|drops?)\.?\s*[:.-]?\s*"
-    r"(?P<med>[A-Za-z][A-Za-z0-9-]{1,49}(?:\s+[A-Za-z][A-Za-z0-9-]{1,30}){0,2})"
+    r"^\s*(?:\(?\d{1,2}\)?\s*[).:-]?\s*)?(?:rx\s*[:.]?\s*)?"
+    r"(?:tab(?:let)?|cap(?:sule)?|syr(?:up)?|inj(?:ection)?|drops?)\.?\s*[:.-]?\s*"
+    r"(?P<med>[A-Za-z][A-Za-z0-9-]{1,49}(?:\s+[A-Za-z][A-Za-z-]{1,30}){0,2})"
     r"(?P<tail>.*)$",re.I)
 _UNLABELED_STRENGTH = re.compile(r"(?<!\w)(\d+(?:\.\d+)?)\s*(mg|mcg|µg|ug|g|mL|ml)(?!\w)",re.I)
 _UNLABELED_FREQ = re.compile(r"(?<!\w)(OD|QD|BD|BID|TDS|TID|QID)(?!\w)|\b(once|twice|three times|four times)\s+daily\b",re.I)
@@ -140,7 +143,7 @@ def extract_unlabeled_candidates(text: str) -> list[dict[str, Any]]:
         freq=_UNLABELED_FREQ.findall(tail)
         fval=''
         if len(freq)==1 and not prn:
-            fval=next((v for v in freq[0] if v),'')
+            fval=freq[0][0] or (freq[0][1]+' daily' if freq[0][1] else '')
         schedules=_UNLABELED_SCHEDULE.findall(tail)
         if len(schedules)==1 and not freq and not prn:
             fval={1:'once daily',2:'twice daily',3:'three times daily'}.get(sum(map(int,schedules[0])),'')

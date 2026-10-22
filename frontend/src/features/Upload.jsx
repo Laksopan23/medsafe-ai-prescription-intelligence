@@ -23,7 +23,7 @@ export default function Upload({models={},onUploaded}){
   <div className="form-label">What would you like to do?</div>
   <div className="analysis-mode-switch" role="group" aria-label="Analysis mode">
    <button type="button" className={analysisMode==='single'?'active':''} aria-pressed={analysisMode==='single'} onClick={()=>setAnalysisMode('single')}>Review a prescription <small>Read, correct and save its details</small></button>
-   <button type="button" className={analysisMode==='compare'?'active':''} aria-pressed={analysisMode==='compare'} onClick={()=>setAnalysisMode('compare')}>Compare text readers <small>See how four methods read the image</small></button>
+   <button type="button" className={analysisMode==='compare'?'active':''} aria-pressed={analysisMode==='compare'} onClick={()=>setAnalysisMode('compare')}>Compare text readers <small>Compare local methods and an optional cloud reader</small></button>
   </div>
   <details className="upload-advanced"><summary>Advanced options</summary>
   {analysisMode==='single'&&<><div className="form-label">Text-reading method</div><div className="engine-grid">{engines.map(([id,label,description])=><button key={id} type="button" onClick={()=>setEngine(id)}
@@ -41,7 +41,7 @@ export default function Upload({models={},onUploaded}){
   </details>
   {error&&<Notice type="error">{error}</Notice>}
   {analysisMode==='single'&&<button className="button button-primary submit-upload" disabled={!file||busy} onClick={submit}>{busy?<><LoaderCircle size={19} className="spin"/> Reading image…</>:<>Read prescription <ArrowRight size={19}/></>}</button>}
-  {analysisMode==='compare'&&<div className="upload-mode-note"><Info size={17}/><span>Compare all four engines without saving a prescription. Install optional models to enable all results. The comparison accepts files up to 8 MB.</span></div>}
+  {analysisMode==='compare'&&<div className="upload-mode-note"><Info size={17}/><span>Compare local methods without saving a prescription. The optional cloud reader sends the image to Google only when selected. Maximum file size: 8 MB.</span></div>}
  </section>
  <aside className="upload-aside"><div className="surface"><div className="aside-illustration"><ShieldCheck size={27}/></div><h3>How it works</h3>
   <ol className="process-steps"><li><span>01</span><div><strong>Upload</strong><p>Choose the prescription image.</p></div></li>

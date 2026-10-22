@@ -8,6 +8,12 @@ For the optional neural OCR engines, install `requirements-ocr.txt`. Set `MEDSAF
 
 The **Research** page also includes an interactive four-engine OCR comparison. Upload a fictional or appropriately authorized single-page prescription; the endpoint `/api/compare` sends the same prepared image to each installed OCR engine, reports unverified transcriptions and elapsed times, and does not retain the comparison image. This is an exploratory preview, not a labeled thesis accuracy evaluation.
 
+### Optional Gemini OCR comparison
+
+The comparison page can add Google Gemini as a fifth, clearly labeled cloud method. It is **off by default**. Enabling its checkbox sends the selected image to Google; do this only for synthetic images or with the necessary authorization. It does not replace the local OCR for saved prescriptions, and its output still needs manual checking. To enable it, set `GEMINI_API_KEY` as a Windows user environment variable, open a new terminal, and restart the app. Optionally set `MEDSAFE_GEMINI_MODEL` (default `gemini-2.5-flash`). Do not put keys in the repository, frontend, batch files, or screenshots. Keys previously shared publicly should be revoked and replaced. No live Google call is part of the local test suite.
+
+For a temporary local-only code setting instead, paste a new private key into `API_KEY = ""` in `medsafe/cloud_local.py`. This backend file is ignored by Git. Restart the app after editing it. The environment variable, when set, takes precedence. Do not force-add or share the local file.
+
 ---
 
 ## Archived setup instructions (historical; may describe the older offline interface)
