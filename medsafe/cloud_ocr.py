@@ -1,4 +1,4 @@
-"""Opt-in, comparison-only image transcription using Google's Gemini API."""
+"""Online image transcription adapter used by the prescription reader."""
 from __future__ import annotations
 
 import base64
@@ -30,10 +30,10 @@ def configured() -> bool:
 def transcribe(image_bytes: bytes) -> dict:
     key = _api_key()
     if not key:
-        raise GeminiUnavailable('Cloud reader is not configured. Set GEMINI_API_KEY or add a key to medsafe/cloud_local.py on the server.')
+        raise GeminiUnavailable('Online reader is not configured. Add the reader access key on the server.')
     model = os.getenv('MEDSAFE_GEMINI_MODEL', 'gemini-3.5-flash').strip()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}', model):
-        raise GeminiUnavailable('Invalid Gemini model name.')
+        raise GeminiUnavailable('Online reader configuration is invalid.')
     payload = {'contents': [{'role': 'user', 'parts': [
         {'text': ('Read this prescription image carefully and return a complete, faithful transcription. '
                   'Do not guess, correct medicines, assess safety, or add commentary. Use [unclear] '
@@ -61,8 +61,8 @@ def transcribe(image_bytes: bytes) -> dict:
         status = exc.response.status_code if exc.response is not None else 'unknown'
         raise GeminiUnavailable(f'Online reader request was rejected (HTTP {status}); check the key, model and quota.') from exc
     except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as exc:
-        raise GeminiUnavailable('Gemini request failed; check the key, network, model and quota.') from exc
+        raise GeminiUnavailable('Online reader request failed; check the access key, network, model and quota.') from exc
     if not text:
-        raise GeminiUnavailable('Gemini returned no readable transcription.')
+        raise GeminiUnavailable('Online reader returned no readable transcription.')
     return {'text': text, 'regions': [], 'warnings': ['REMOTE_OCR_TRANSCRIPTION_REQUIRES_REVIEW'],
-            'provider': 'Google Gemini', 'model': model}
+            'provider': 'Online reader', 'model': model}
