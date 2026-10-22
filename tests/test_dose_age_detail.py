@@ -42,6 +42,16 @@ def test_v3_import_and_exact_formulation(tmp_path):
     assert match_rule(loaded, **context) is None
 
 
+def test_legacy_rule_is_inspectable_but_not_activated(tmp_path):
+    item = rule()
+    item['schema_version'] = 2
+    path = tmp_path / 'legacy.json'
+    path.write_text(json.dumps([item]), encoding='utf-8')
+    assert len(load_reviewed_rules(path)) == 1
+    with pytest.raises(RuleRegistryError, match='legacy schema'):
+        load_reviewed_rules(path, require_schema_v3=True)
+
+
 @pytest.mark.parametrize('field,value', [
     ('formulation', ''), ('approval_date', '2099-01-01'),
     ('exclusions', ''), ('source_type', ''),

@@ -11,7 +11,7 @@ def clinical_readiness(registry_path, evaluation_path, approval_path):
     blockers = []
     try:
         from medsafe.rule_registry import load_reviewed_rules
-        rules = load_reviewed_rules(registry_path)
+        rules = load_reviewed_rules(registry_path, require_schema_v3=True)
         if not rules:
             blockers.append("NO_APPROVED_REAL_DRUG_RULES")
         if any(str(r.get("ingredient", "")).lower().startswith(("synthmed", "fictional", "test-")) for r in rules):

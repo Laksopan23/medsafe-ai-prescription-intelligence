@@ -12,7 +12,7 @@ def assess_report(report):
     path=Path(os.getenv('MEDSAFE_REVIEWED_RULES',str(default_registry)))
     registry_error=False
     try:
-        rules=load_reviewed_rules(path)
+        rules=load_reviewed_rules(path, require_schema_v3=True)
     except (RuleRegistryError,ValueError,OSError):
         rules=[]
         registry_error=True

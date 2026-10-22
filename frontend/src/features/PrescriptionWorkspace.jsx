@@ -52,6 +52,8 @@ export default function PrescriptionWorkspace({detail,onReviewed,onDeleted}){
        {busy?<LoaderCircle className="spin" size={18}/>:<ClipboardCheck size={18}/>} {editing?'Confirm revised transcription and recalculate findings':'Confirm transcription and run safety screen'}</button>}
     </div>:<div className="tab-body">
       <Notice type="warning">Clinical clearance is unavailable. All findings are advisory and require a qualified professional.</Notice>
+      {report.reviewed_rule_registry_status==='INVALID_OR_UNAVAILABLE'&&<Notice type="error">Medication reference rules could not be validated. Dose and age checks are unavailable until the local rule file is corrected.</Notice>}
+      {report.reviewed_rule_registry_status==='NO_APPROVED_RULES'&&<Notice type="info">No approved medication rules are installed. Dose and age findings will remain unresolved for real prescriptions.</Notice>}
       <div className="findings-summary"><div className="finding-number">{issues.length}</div><div><strong>Screening observations</strong><p>Across {medications.length} medication entries. No autonomous treatment decision.</p></div></div>
       <FindingsCenter issues={issues} onEdit={()=>{setEditing(true);setTab('transcription')}}/>
       <div className="medication-section"><h3>Medication-by-medication evidence</h3>

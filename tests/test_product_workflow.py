@@ -74,19 +74,28 @@ def test_unapproved_reference_never_clears_dose(client):
 
 def test_reviewed_rule_age_and_dose_flags_only_on_exact_match(client,tmp_path,monkeypatch):
     import json
-    from datetime import date
+    from datetime import date, datetime, timedelta, timezone
     from medsafe.api_product import _rule_assessment
-    rule={'ingredient':'EXAMPLEMED','product_identifier':'PRODUCT-123',
+    rule={'schema_version':3,'ingredient':'EXAMPLEMED','product_identifier':'PRODUCT-123',
+          'formulation':'fictional tablet','strength':'10 mg',
           'route':'oral','indication':'synthetic test','population':'adult',
           'dose_unit':'mg','max_single':10.0,'max_daily':20.0,
           'min_age_years':18.0,'max_age_years':65.0,
           'source_url':'https://example.com/synthetic-test','source_section':'Mock test only',
+          'source_type':'TEST_ONLY','source_label_id':'FICTIONAL-LABEL',
+          'source_revision':'20260101','source_retrieved_utc':datetime.now(timezone.utc).isoformat(),
           'reviewer':'mock tester','review_date':date.today().isoformat(),'version':'test1',
+          'reviewer_credentials':'test only','reviewer_institution':'fictional institution',
+          'second_reviewer':'second mock tester','second_reviewer_credentials':'test only',
+          'second_review_date':date.today().isoformat(),'approval_date':date.today().isoformat(),
+          'approval_record_id':'FICTIONAL-TEST-ONLY',
+          'expires_on':(date.today()+timedelta(days=30)).isoformat(),
+          'exclusions':'Uncertain transcription',
           'review_status':'APPROVED_BY_QUALIFIED_REVIEWER'}
     rules_path=tmp_path/'rules.json';rules_path.write_text(json.dumps([rule]))
     monkeypatch.setenv('MEDSAFE_REVIEWED_RULES',str(rules_path))
     from medsafe.pipeline import analyze_text
-    text='Age: 70 years\nMedicine: EXAMPLEMED\nDose: 50 mg\nFrequency: twice daily\nRoute: oral\nProduct Identifier: PRODUCT-123\nIndication: synthetic test\nPopulation: adult'
+    text='Age: 70 years\nMedicine: EXAMPLEMED\nDose: 50 mg\nFrequency: twice daily\nRoute: oral\nProduct Identifier: PRODUCT-123\nFormulation: fictional tablet\nStrength: 10 mg\nIndication: synthetic test\nPopulation: adult'
     rep=_rule_assessment(analyze_text(text))
     assert rep['medications'][0]['reviewed_dose_rule']['status']=='NOT_EVALUATED'
     assert rep['medications'][0]['reviewed_age_rule']['status']=='REVIEW_AGE_RANGE_FLAG'

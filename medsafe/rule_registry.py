@@ -38,7 +38,7 @@ def _active(rule):
     except RuleRegistryError:
         return False
 
-def load_reviewed_rules(path: str | Path):
+def load_reviewed_rules(path: str | Path, *, require_schema_v3: bool = False):
     try:
         data=json.loads(Path(path).read_text(encoding='utf-8'))
     except json.JSONDecodeError as exc:
@@ -52,6 +52,8 @@ def load_reviewed_rules(path: str | Path):
             raise RuleRegistryError(f'Rule {i} is not an object')
         if entry.get('schema_version', 1) not in (1, 2, 3):
             raise RuleRegistryError(f'Rule {i} unsupported schema version')
+        if require_schema_v3 and entry.get('schema_version') != 3:
+            raise RuleRegistryError(f'Rule {i} uses a legacy schema and cannot be activated')
         for key in REQUIRED:
             value=entry.get(key)
             if key in ('max_single','max_daily'):
