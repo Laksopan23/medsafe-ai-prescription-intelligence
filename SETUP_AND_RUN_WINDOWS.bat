@@ -178,6 +178,13 @@ if defined SETUP_ONLY (
 echo Open http://127.0.0.1:8000 after the server starts.
 echo Press CTRL+C to stop it.
 echo.
+netstat -ano | findstr /R /C:"127.0.0.1:8000 .*LISTENING" >nul 2>nul
+if not errorlevel 1 (
+  echo The application is already running on http://127.0.0.1:8000.
+  echo Reuse the open browser page, or stop the existing server before running this file again.
+  set "EXIT_CODE=0"
+  goto done
+)
 ".venv\Scripts\python.exe" -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 set "EXIT_CODE=%errorlevel%"
 goto done
