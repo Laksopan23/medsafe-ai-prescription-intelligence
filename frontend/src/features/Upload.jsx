@@ -5,12 +5,12 @@ import OCRComparison from './OCRComparison.jsx';
 import {uploadPrescription,formatEngine} from '../lib/api.js';
 const TYPES=/\.(png|jpe?g|webp|pdf)$/i;
 export default function Upload({models={},onUploaded}){
- const ref=useRef(null);const [file,setFile]=useState(null),[engine,setEngine]=useState('tesseract');
+ const ref=useRef(null);const [file,setFile]=useState(null),[engine,setEngine]=useState('gemini');
  const [preprocess,setPreprocess]=useState('none'),[analysisMode,setAnalysisMode]=useState('single');
  const [drag,setDrag]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const select=(f)=>{if(!f)return;if(!TYPES.test(f.name)){setError('Choose a PNG, JPG, WEBP, or single-page PDF.');return}if(f.size>12*1024*1024){setError('Maximum file size is 12 MB.');return}setFile(f);setError('')};
  const submit=async()=>{if(!file)return;setBusy(true);setError('');try{const result=await uploadPrescription(file,engine,preprocess);await onUploaded(result.id)}catch(e){setError(e.message)}finally{setBusy(false)}};
- const engines=[['tesseract','Tesseract','Local baseline OCR'],['easyocr','EasyOCR','Research comparison'],['paddleocr','PaddleOCR','Research comparison'],['craft_trocr','CRAFT + TrOCR','Research model comparison'],['gemini','Google-hosted text reader','Cloud comparison']];
+ const engines=[['tesseract','Tesseract','Local baseline OCR'],['easyocr','EasyOCR','Research comparison'],['paddleocr','PaddleOCR','Research comparison'],['craft_trocr','CRAFT + TrOCR','Research model comparison'],['gemini','Additional text reader','Online reading method']];
  return <><div className="upload-layout"><section className="surface upload-card">
   <div className="section-top"><div><h3>Choose a prescription</h3><p>Upload a clear image or a one-page PDF. You can check the text next.</p></div><div className="step-label">STEP 1 OF 3</div></div>
   <input ref={ref} type="file" accept=".png,.jpg,.jpeg,.webp,.pdf" hidden onChange={e=>select(e.target.files?.[0])}/>
@@ -28,7 +28,7 @@ export default function Upload({models={},onUploaded}){
   <details className="upload-advanced"><summary>Advanced options</summary>
   {analysisMode==='single'&&<><div className="form-label">Text-reading method</div><div className="engine-grid">{engines.map(([id,label,description])=><button key={id} type="button" onClick={()=>setEngine(id)}
    className={'engine-option'+(engine===id?' active':'')}><div className="radio-indicator"/><strong>{label}</strong><span>{description}</span>{models.benchmark_engines?.[id==='craft_trocr'?'trocr':id]===false&&<small>Requires local model setup</small>}</button>)}</div></>}
-  {engine==='gemini'&&<div className="upload-mode-note"><Info size={17}/><span>This sends the image to Google for reading. Use only with permission.</span></div>}
+  {engine==='gemini'&&<div className="upload-mode-note"><Info size={17}/><span>This image will be sent outside this computer for text reading. Use only with permission.</span></div>}
   <label className="form-label" htmlFor="preprocessing-mode">Image adjustment</label>
   <div className="preprocessing-control">
     <select id="preprocessing-mode" value={preprocess} onChange={e=>setPreprocess(e.target.value)}>

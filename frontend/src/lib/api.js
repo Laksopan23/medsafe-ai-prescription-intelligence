@@ -17,7 +17,7 @@ export function formatDate(value) {
   }).format(date);
 }
 export const formatEngine = value => ({
-  tesseract:'Tesseract',easyocr:'EasyOCR',paddleocr:'PaddleOCR',craft_trocr:'CRAFT + TrOCR',gemini:'Google-hosted text reader'
+  tesseract:'Tesseract',easyocr:'EasyOCR',paddleocr:'PaddleOCR',craft_trocr:'CRAFT + TrOCR',gemini:'Additional text reader'
 }[value] || value || 'Unknown');
 export async function uploadPrescription(file,engine,preprocess='none') {
   const payload=new FormData(); payload.append('file',file);
