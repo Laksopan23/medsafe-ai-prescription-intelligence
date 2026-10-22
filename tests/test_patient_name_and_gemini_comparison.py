@@ -98,3 +98,15 @@ def test_gemini_request_sends_image_and_returns_transcript_without_exposing_key(
     assert observed['headers']['x-goog-api-key'] == 'test-secret-never-use-live'
     assert observed['json']['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/png'
     assert 'test-secret-never-use-live' not in str(result)
+
+
+def test_saved_prescription_can_use_cloud_reader(monkeypatch):
+    from medsafe import api_product
+    monkeypatch.setattr(api_product, 'recognize', lambda data, engine: {
+        'text': 'Name: Sample\nRx\nTab. Example 10 mg', 'regions': [],
+        'engine': engine, 'warnings': ['REMOTE_OCR_TRANSCRIPTION_REQUIRES_REVIEW']})
+    with TestClient(app) as client:
+        response = client.post('/api/prescriptions?engine=gemini',
+                               files={'file': ('demo.png', _image(), 'image/png')})
+    assert response.status_code == 200, response.text
+    assert response.json()['ocr']['engine'] == 'gemini'

@@ -270,6 +270,13 @@ def _paddle_regions(pages):
 
 def recognize(data:bytes,engine='craft_trocr'):
     image=decode_image(data)
+    if engine == 'gemini':
+        from .cloud_ocr import transcribe
+        result = transcribe(data)
+        return {'text':result['text'],'engine':'gemini','regions':result.get('regions',[]),
+                'boxes':[],'warnings':result.get('warnings',[]),'confidence':None,
+                'provider':result.get('provider'),'model':result.get('model'),
+                'width':image.width,'height':image.height}
     if engine=='tesseract':
         raw=_tesseract(image)
         regions=raw.get('token_regions',[])
