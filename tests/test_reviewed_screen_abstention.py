@@ -1,19 +1,29 @@
 """Reviewed clinical screen must abstain on incomplete or contradictory prescriptions."""
 import json
+from datetime import date, datetime, timedelta, timezone
 from medsafe.pipeline import analyze_text
 from backend.app.services.review_service import assess_report
 
 RULE = {
-    "ingredient":"FictionalTest","product_identifier":"TEST-0001",
+    "schema_version":3,"ingredient":"FictionalTest","product_identifier":"TEST-0001",
+    "formulation":"fictional tablet","strength":"100 mg",
     "route":"oral","indication":"synthetic test","population":"fictional adult",
     "dose_unit":"mg","max_single":100,"max_daily":200,
     "source_url":"https://example.org/fictional","source_section":"synthetic",
+    "source_type":"TEST_ONLY","source_label_id":"FICTIONAL-LABEL",
+    "source_revision":"20260101","source_retrieved_utc":datetime.now(timezone.utc).isoformat(),
     "reviewer":"unit test","review_date":"2026-01-01","version":"1",
+    "reviewer_credentials":"test only","reviewer_institution":"fictional institution",
+    "second_reviewer":"second unit test","second_reviewer_credentials":"test only",
+    "second_review_date":date.today().isoformat(),"approval_date":date.today().isoformat(),
+    "approval_record_id":"FICTIONAL-TEST-ONLY","expires_on":(date.today()+timedelta(days=30)).isoformat(),
+    "exclusions":"Uncertain transcription",
     "review_status":"APPROVED_BY_QUALIFIED_REVIEWER",
     "min_age_years":18,"max_age_years":65,
 }
 
 BASE = ("Medicine: FictionalTest\nProduct Identifier: TEST-0001\n"
+        "Formulation: fictional tablet\nStrength: 100 mg\n"
         "Route: oral\nIndication: synthetic test\n"
         "Population: fictional adult\n")
 

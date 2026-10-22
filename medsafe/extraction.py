@@ -12,6 +12,7 @@ _PRODUCT_IDENTIFIER = re.compile(r'^(?:product\s*(?:identifier|id)|verified\s*pr
 _INDICATION = re.compile(r'^(?:indication|verified\s*indication)\s*[:=-]\s*(.*?)\s*$', re.I)
 _POPULATION = re.compile(r'^(?:population|verified\s*population)\s*[:=-]\s*(.*?)\s*$', re.I)
 _STRENGTH = re.compile(r'^(?:strength|product\s*strength)\s*[:=-]\s*(.*?)\s*$', re.I)
+_FORMULATION = re.compile(r'^(?:formulation|dosage\s*form)\s*[:=-]\s*(.*?)\s*$', re.I)
 _WEIGHT = re.compile(r'^(?:weight|patient\s*weight)\s*[:=-]\s*(.*?)\s*$', re.I)
 _DOSE_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*(mg|mcg|µg|ug|g|ml|mL)\s*$', re.I)
 _AGE_PATTERN = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y)?\s*$', re.I)
@@ -26,10 +27,10 @@ _ROUTES = {'oral', 'po', 'topical', 'iv', 'im', 'subcutaneous', 'inhaled', 'rect
 
 def extract(text: str) -> dict[str, Any]:
     """Return extracted raw strings and parse-uncertainty flags, not guesses."""
-    fields = {'medicine': '', 'dose': '', 'frequency': '', 'age': '', 'route': '', 'weight': '', 'strength': '', 'product_identifier': '', 'indication': '', 'population': ''}
+    fields = {'medicine': '', 'dose': '', 'frequency': '', 'age': '', 'route': '', 'weight': '', 'strength': '', 'formulation': '', 'product_identifier': '', 'indication': '', 'population': ''}
     occurrences: dict[str, list[str]] = {k: [] for k in fields}
     patterns = {'medicine': _MED, 'dose': _DOSE, 'frequency': _FREQ,
-                'age': _AGE, 'route': _ROUTE, 'weight': _WEIGHT, 'strength': _STRENGTH, 'product_identifier': _PRODUCT_IDENTIFIER, 'indication': _INDICATION, 'population': _POPULATION}
+                'age': _AGE, 'route': _ROUTE, 'weight': _WEIGHT, 'strength': _STRENGTH, 'formulation': _FORMULATION, 'product_identifier': _PRODUCT_IDENTIFIER, 'indication': _INDICATION, 'population': _POPULATION}
     nonempty = [line.strip() for line in text.splitlines() if line.strip()]
     for line in nonempty:
         for key, pattern in patterns.items():
