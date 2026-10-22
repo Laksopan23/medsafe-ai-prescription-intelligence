@@ -7,6 +7,13 @@ Input regions are automatically generated proposals, NOT verified word boxes.
 from __future__ import annotations
 import os
 from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_LOCAL_CHECKPOINTS = (
+    _PROJECT_ROOT / '02_models' / 'trocr_notebook44' / 'best_model_DEVELOPMENT_ONLY',
+    _PROJECT_ROOT / '02_models' / 'trocr_finetuned_official_source_dev_notebook44'
+    / '943e9bd2b5f1a54d' / 'best_model_DEVELOPMENT_ONLY',
+)
 from functools import lru_cache
 from typing import Sequence
 from PIL import Image
@@ -25,6 +32,9 @@ def configured_checkpoint() -> Path | None:
     raw = os.getenv('MEDSAFE_TROCR_MODEL_DIR', '').strip()
     if raw:
         return Path(raw).expanduser()
+    for candidate in _LOCAL_CHECKPOINTS:
+        if candidate.is_dir():
+            return candidate
     default = Path(NOTEBOOK44_CHECKPOINT)
     return default if default.is_dir() else None
 
@@ -34,10 +44,11 @@ def checkpoint_status() -> dict:
     if path is None:
         return {'configured': False, 'files_present': False, 'ready_for_load': False,
                 'model_name': 'Notebook44 fine-tuned TrOCR (development-only)',
-                'reason': 'Mount Drive or set MEDSAFE_TROCR_MODEL_DIR to the fine-tuned model folder.'}
+                'reason': 'Notebook 44 model weights are not in the repository. Copy the complete best_model_DEVELOPMENT_ONLY folder into 02_models/trocr_notebook44/ or set MEDSAFE_TROCR_MODEL_DIR to its absolute local path. Run setup_notebook44_windows.bat on Windows.'}
     missing = [name for name in _REQUIRED if not (path / name).is_file()]
     return {'configured': True, 'files_present': not missing,
-            'ready_for_load': not missing,
+            'ready_for_load': not missing, 'checkpoint_path': str(path),
+            'reason': ('Missing checkpoint assets: ' + ', '.join(missing)) if missing else None,
             'model_name': 'Notebook44 fine-tuned TrOCR (development-only)',
             'missing_files': missing, 'weights_verified_by_inference': False}
 

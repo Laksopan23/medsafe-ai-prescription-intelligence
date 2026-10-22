@@ -24,9 +24,16 @@ def main(argv=None):
     ap.add_argument("--download-only",action="store_true",help="Load and cache both models without image inference")
     ap.add_argument("--image",type=Path,default=ROOT/"examples"/"synthetic_prescription.png")
     ap.add_argument("--output",type=Path,default=ROOT/"runtime_data"/"ocr_model_smoke_test.json")
-    ap.add_argument("--model-id",default=DEFAULT_MODEL,help="Local verified MedSafe-AI research checkpoint directory")
+    ap.add_argument("--model-id",default=None,help="Local Notebook 44 checkpoint folder (otherwise use MEDSAFE_TROCR_MODEL_DIR or project default)")
     args=ap.parse_args(argv)
-    os.environ["MEDSAFE_TROCR_MODEL_DIR"]=args.model_id
+    from medsafe.trocr import configured_checkpoint, checkpoint_status
+    chosen = args.model_id or os.environ.get("MEDSAFE_TROCR_MODEL_DIR") or str(configured_checkpoint() or DEFAULT_MODEL)
+    os.environ["MEDSAFE_TROCR_MODEL_DIR"] = chosen
+    args.model_id = chosen
+    state = checkpoint_status()
+    if not state["ready_for_load"]:
+        print("Checkpoint not ready:", state.get("reason") or state.get("missing_files"), flush=True)
+        print("Expected full Notebook 44 folder. Use setup_notebook44_windows.bat to select it.", flush=True)
     os.environ.setdefault("HF_HOME",str(ROOT/"model_cache"/"huggingface"))
     os.environ.setdefault("EASYOCR_MODULE_PATH",str(ROOT/"model_cache"/"easyocr"))
     Path(os.environ["HF_HOME"]).mkdir(parents=True,exist_ok=True)
