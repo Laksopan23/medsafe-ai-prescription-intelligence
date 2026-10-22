@@ -93,7 +93,7 @@ def test_gemini_request_sends_image_and_returns_transcript_without_exposing_key(
         return Response()
     monkeypatch.setattr(gemini_ocr.requests, 'post', fake_post)
     result = gemini_ocr.transcribe(_image())
-    assert result['provider'] == 'Online reader'
+    assert result['provider'] == 'Reader'
     assert 'Tab. Example' in result['text']
     assert observed['headers']['x-goog-api-key'] == 'test-secret-never-use-live'
     assert observed['json']['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/png'
