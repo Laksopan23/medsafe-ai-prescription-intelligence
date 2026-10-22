@@ -57,6 +57,9 @@ def transcribe(image_bytes: bytes) -> dict:
         body = response.json()
         parts = body.get('candidates', [{}])[0].get('content', {}).get('parts', [])
         text = '\n'.join(p['text'] for p in parts if isinstance(p.get('text'), str)).strip()
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else 'unknown'
+        raise GeminiUnavailable(f'Online reader request was rejected (HTTP {status}); check the key, model and quota.') from exc
     except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as exc:
         raise GeminiUnavailable('Gemini request failed; check the key, network, model and quota.') from exc
     if not text:
