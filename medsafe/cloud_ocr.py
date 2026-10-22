@@ -31,7 +31,7 @@ def transcribe(image_bytes: bytes) -> dict:
     key = _api_key()
     if not key:
         raise GeminiUnavailable('Cloud reader is not configured. Set GEMINI_API_KEY or add a key to medsafe/cloud_local.py on the server.')
-    model = os.getenv('MEDSAFE_GEMINI_MODEL', 'gemini-2.5-flash').strip()
+    model = os.getenv('MEDSAFE_GEMINI_MODEL', 'gemini-3.5-flash').strip()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}', model):
         raise GeminiUnavailable('Invalid Gemini model name.')
     payload = {'contents': [{'role': 'user', 'parts': [

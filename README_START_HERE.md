@@ -2,7 +2,9 @@
 
 ## Run the current modular application
 
-Install Python 3.11/3.12, Node.js 20+ with npm, and Tesseract if using its baseline. On Windows, run `start_windows.bat`; on macOS/Linux, run `bash start_linux_mac.sh`. These scripts install the core dependencies, build the current React interface, and start the backend at `http://127.0.0.1:8000`. The frontend build is mandatory so a stale offline page cannot silently replace the current UI.
+On Windows, run `SETUP_AND_RUN_WINDOWS.bat` from the repository root. It checks or attempts to install Python, Node.js and Tesseract, installs the core and optional OCR packages, locates the exact Notebook 44 checkpoint on a mounted Google Drive (or asks for its folder path), copies and verifies it, builds the React interface, and starts the backend at `http://127.0.0.1:8000`. The private checkpoint is **not** in GitHub: Google Drive for desktop or another accessible copy of the original files is required. A failed copy never triggers a substitute model. On macOS/Linux, use `bash start_linux_mac.sh` for the baseline installation; optional model setup remains manual there.
+
+Run it in PowerShell with `./SETUP_AND_RUN_WINDOWS.bat` (or `cmd /c SETUP_AND_RUN_WINDOWS.bat`). For setup verification without leaving the server open, use `./SETUP_AND_RUN_WINDOWS.bat --setup-only`. If the Drive checkpoint is in a nonstandard location, pass its full folder path as the first argument. The script checks the copied model's SHA-256 against the research checkpoint before use. Completed model downloads and the inference smoke test are reused on later runs.
 
 For the optional neural OCR engines, install `requirements-ocr.txt`. Set `MEDSAFE_TROCR_MODEL_DIR` to the **existing Notebook 44 checkpoint directory** containing `model.safetensors` and tokenizer/processor/config files. The application reports unavailable models explicitly and never substitutes a pretrained public TrOCR for the fine-tuned research model.
 
@@ -10,7 +12,7 @@ The **Research** page also includes an interactive four-engine OCR comparison. U
 
 ### Optional Gemini OCR comparison
 
-The comparison page can add Google Gemini as a fifth, clearly labeled cloud method. It is **off by default**. Enabling its checkbox sends the selected image to Google; do this only for synthetic images or with the necessary authorization. It does not replace the local OCR for saved prescriptions, and its output still needs manual checking. To enable it, set `GEMINI_API_KEY` as a Windows user environment variable, open a new terminal, and restart the app. Optionally set `MEDSAFE_GEMINI_MODEL` (default `gemini-2.5-flash`). Do not put keys in the repository, frontend, batch files, or screenshots. Keys previously shared publicly should be revoked and replaced. No live Google call is part of the local test suite.
+The comparison page can add Google Gemini as a fifth, clearly labeled cloud method. It is **off by default**. Enabling its checkbox sends the selected image to Google; do this only for synthetic images or with the necessary authorization. It does not replace the local OCR for saved prescriptions, and its output still needs manual checking. To enable it, set `GEMINI_API_KEY` as a Windows user environment variable, open a new terminal, and restart the app. Optionally set `MEDSAFE_GEMINI_MODEL` (default `gemini-3.5-flash`). Do not put keys in the repository, frontend, batch files, or screenshots. Keys previously shared publicly should be revoked and replaced. No live Google call is part of the local test suite.
 
 For a temporary local-only code setting instead, paste a new private key into `API_KEY = ""` in `medsafe/cloud_local.py`. This backend file is ignored by Git. Restart the app after editing it. The environment variable, when set, takes precedence. Do not force-add or share the local file.
 
