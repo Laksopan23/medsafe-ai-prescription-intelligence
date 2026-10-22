@@ -36,7 +36,20 @@ processor_config.json
 tokenizer.json
 tokenizer_config.json
 
-3. Destination folder in the project
+3. Direct cloud download option
+--------------------------------
+
+If the Drive files are shared with download permission, run this command
+from the project folder. It downloads directly from cloud Drive and does not
+use a mounted drive:
+
+.\\SETUP_FROM_CLOUD_DRIVE.bat
+
+The script downloads each required file, verifies the checkpoint, and runs the
+setup-only checks. If Drive asks for permission, the files must be shared with
+the person running the script.
+
+4. Destination folder in the project
 -------------------------------------
 
 Copy the files into:
@@ -48,7 +61,7 @@ then append:
 
 02_models\trocr_notebook44\best_model_DEVELOPMENT_ONLY
 
-4. Copy command
+5. Copy command
 --------------
 
 Open PowerShell in the medsafe_core project folder and run:
@@ -57,7 +70,7 @@ robocopy "G:\My Drive\MedSafe_AI_Project\02_models\trocr_finetuned_official_sour
 
 Replace G: if Google Drive uses another letter.
 
-5. Verify the model
+6. Verify the model
 -------------------
 
 Run:
@@ -67,7 +80,7 @@ python setup_and_verify_models.py --model-id "02_models\trocr_notebook44\best_mo
 The verification must report that the research checkpoint is complete and
 the model smoke test passed.
 
-6. Start the application
+7. Start the application
 ------------------------
 
 After verification, run:
@@ -78,7 +91,7 @@ Or use the automatic mounted-Drive helper:
 
 .\SETUP_FROM_DRIVE.bat
 
-7. If the source folder is not found
+8. If the source folder is not found
 -------------------------------------
 
 Check the following:
