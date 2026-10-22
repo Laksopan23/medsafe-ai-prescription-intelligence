@@ -27,7 +27,8 @@ def assess_report(report):
         # These context fields are never silently inferred from patient demographics or OCR.
         rule=match_rule(rules,ingredient=fields.get('medicine',''),product_identifier=fields.get('product_identifier',''),
                         route=fields.get('route',''),indication=fields.get('indication',''),
-                        population=fields.get('population','')) if rules else None
+                        population=fields.get('population',''),formulation=fields.get('formulation',''),
+                        strength=fields.get('strength','')) if rules else None
         # Never screen against a possibly contradictory or incomplete transcription.
         # Even a matching label must abstain when extraction has a blocking issue.
         blocked=bool(m['extraction'].get('candidate_only')) or any(
@@ -60,8 +61,12 @@ def assess_report(report):
         if rule is not None and age is not None and type(rule.get('min_age_years')) in (int,float) and type(rule.get('max_age_years')) in (int,float):
             lo,hi=rule['min_age_years'],rule['max_age_years']
             if 0<=lo<=hi<=120:
-                age_check={'status':'REVIEW_AGE_RANGE_FLAG' if not lo<=age<=hi else 'WITHIN_REVIEWED_AGE_RANGE_NOT_PROOF_OF_SAFETY',
+                outside=not lo<=age<=hi
+                age_check={'status':'REVIEW_AGE_RANGE_FLAG' if outside else 'WITHIN_REVIEWED_AGE_RANGE_NOT_PROOF_OF_SAFETY',
+                           'outcome':'AGE_OUTSIDE_REVIEWED_INDICATION' if outside else 'WITHIN_REVIEWED_AGE_APPLICABILITY_NOT_PROOF_OF_SAFETY',
                            'source_url':rule['source_url'],'min_age_years':lo,'max_age_years':hi,
+                           'source_revision':rule.get('source_revision'),'rule_identifier':rule.get('approval_record_id'),
+                           'rule_version':rule.get('version'),
                            'note':'Age-range screen only; not an individual clinical dosing recommendation'}
         if blocked:
             age_check={'status':'UNABLE_TO_VALIDATE',
