@@ -65,7 +65,7 @@ def test_gemini_adapter_requires_server_key(monkeypatch):
     try:
         gemini_ocr.transcribe(_image())
     except gemini_ocr.GeminiUnavailable as exc:
-        assert 'GEMINI_API_KEY' in str(exc)
+        assert 'access key' in str(exc)
     else:
         raise AssertionError('The Gemini request must not run without a key')
 
@@ -93,7 +93,7 @@ def test_gemini_request_sends_image_and_returns_transcript_without_exposing_key(
         return Response()
     monkeypatch.setattr(gemini_ocr.requests, 'post', fake_post)
     result = gemini_ocr.transcribe(_image())
-    assert result['provider'] == 'Google Gemini'
+    assert result['provider'] == 'Online reader'
     assert 'Tab. Example' in result['text']
     assert observed['headers']['x-goog-api-key'] == 'test-secret-never-use-live'
     assert observed['json']['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/png'
