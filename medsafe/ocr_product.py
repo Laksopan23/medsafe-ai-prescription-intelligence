@@ -36,7 +36,7 @@ def status():
     transformers_available=importlib.util.find_spec('transformers') is not None
     trocr_ready=bool(checkpoint.get('ready_for_load') and craft_available and transformers_available and torch_installed)
     return {
-        'default': 'tesseract', 'detector': 'Tesseract full-page OCR',
+        'default': 'gemini', 'detector': 'Online prescription reader',
         'benchmark_engines': {
             'tesseract': tesseract_executable() is not None,
             'easyocr': importlib.util.find_spec('easyocr') is not None,

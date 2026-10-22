@@ -22,7 +22,7 @@ def test_static_app_and_status(client):
     assert 'PRESCRIPTION INTELLIGENCE' in client.get('/').text
     assert client.get('/offline/app.js').status_code==200
     assert client.get('/api/health').json()['clinical_clearance'] is False
-    assert client.get('/api/models').json()['default']=='tesseract'
+    assert client.get('/api/models').json()['default']=='gemini'
 
 def test_upload_review_report_history_delete(client):
     r=client.post('/api/prescriptions?engine=tesseract',files={'file':('test.png',_image(),'image/png')})
