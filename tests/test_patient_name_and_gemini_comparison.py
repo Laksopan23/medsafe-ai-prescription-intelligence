@@ -1,4 +1,6 @@
 import io
+import sys
+from types import ModuleType
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -57,8 +59,9 @@ def test_gemini_is_explicitly_opt_in(monkeypatch):
 
 def test_gemini_adapter_requires_server_key(monkeypatch):
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
-    from medsafe import cloud_local as gemini_local
-    monkeypatch.setattr(gemini_local, 'API_KEY', '')
+    local = ModuleType('medsafe.cloud_local')
+    local.API_KEY = ''
+    monkeypatch.setitem(sys.modules, 'medsafe.cloud_local', local)
     try:
         gemini_ocr.transcribe(_image())
     except gemini_ocr.GeminiUnavailable as exc:
@@ -69,8 +72,9 @@ def test_gemini_adapter_requires_server_key(monkeypatch):
 
 def test_local_only_key_is_supported_without_exposing_it(monkeypatch):
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
-    from medsafe import cloud_local as gemini_local
-    monkeypatch.setattr(gemini_local, 'API_KEY', 'local-test-secret')
+    local = ModuleType('medsafe.cloud_local')
+    local.API_KEY = 'local-test-secret'
+    monkeypatch.setitem(sys.modules, 'medsafe.cloud_local', local)
     assert gemini_ocr.configured() is True
     monkeypatch.setenv('GEMINI_API_KEY', 'environment-test-secret')
     assert gemini_ocr._api_key() == 'environment-test-secret'
