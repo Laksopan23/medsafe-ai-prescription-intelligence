@@ -85,34 +85,62 @@ def _recognizer():
 def _boxes(image):
     import numpy as np
     reader = _craft()
-    # EasyOCR returns horizontal boxes [x_min, x_max, y_min, y_max];
-    # use the original full-page image, never fixed coordinates.
-    horizontal, freeform = reader.detect(np.asarray(image), min_size=12, text_threshold=0.55,
-                                         low_text=0.3, link_threshold=0.35)
+    # Notebook 61 LAYOUT_V2 CRAFT settings on the original image.
+    horizontal, freeform = reader.detect(np.asarray(image), min_size=8,
+                                         text_threshold=0.55, low_text=0.25,
+                                         link_threshold=0.25, canvas_size=2560,
+                                         mag_ratio=1.5, add_margin=0.06)
     raw = horizontal[0] if horizontal else []
     width, height = image.size
+    def clamp(bounds):
+        x1,y1,x2,y2=[int(v) for v in bounds]
+        x1=max(0,min(width-1,x1));x2=max(x1+1,min(width,x2))
+        y1=max(0,min(height-1,y1));y2=max(y1+1,min(height,y2))
+        return (x1,y1,x2,y2)
     boxes = []
     for bounds in raw:
-        if len(bounds) != 4: continue
-        x1,x2,y1,y2 = [int(round(float(v))) for v in bounds]
-        pad = max(3, round((y2-y1) * 0.12))
-        x1,x2 = max(0,x1-pad), min(width,x2+pad)
-        y1,y2 = max(0,y1-pad), min(height,y2+pad)
-        if x2-x1<9 or y2-y1<9:continue
-        boxes.append((x1,y1,x2,y2))
-    # Rotated text polygons from CRAFT are supported by their safe axis-aligned
-    # bounding rectangles; they remain UNVERIFIED proposals.
+        if len(bounds)==4:
+            boxes.append(clamp((bounds[0],bounds[2],bounds[1],bounds[3])))
     for polygon in (freeform[0] if freeform else []):
-        if len(polygon)<3:continue
-        xs=[float(p[0]) for p in polygon]; ys=[float(p[1]) for p in polygon]
-        x1,y1,x2,y2=max(0,int(min(xs))-3),max(0,int(min(ys))-3),min(width,int(max(xs))+4),min(height,int(max(ys))+4)
-        if x2-x1>=9 and y2-y1>=9:boxes.append((x1,y1,x2,y2))
-    # Approximate deduplication, no medicine name heuristics or template coordinates.
+        if len(polygon)>=3:
+            xs=[float(p[0]) for p in polygon];ys=[float(p[1]) for p in polygon]
+            boxes.append(clamp((min(xs),min(ys),max(xs),max(ys))))
+    boxes=_deduplicate_boxes(boxes)
+    boxes=_deduplicate_boxes(_merge_same_line(boxes))
+    if len(boxes)>256:
+        raise OCRUnavailable('CRAFT proposed more than 256 regions; manual review is required rather than silently discarding text')
+    return boxes
+
+
+def _merge_same_line(boxes):
+    """Notebook 61 conservative merge; never bridge large whitespace."""
+    boxes=sorted(set(boxes),key=lambda b:(b[1],b[0]))
+    changed=True
+    while changed:
+        changed=False
+        for i,a in enumerate(boxes):
+            for j in range(i+1,len(boxes)):
+                b=boxes[j]
+                ha=a[3]-a[1];hb=b[3]-b[1]
+                overlap=max(0,min(a[3],b[3])-max(a[1],b[1]))
+                gap=max(0,max(a[0],b[0])-min(a[2],b[2]))
+                if (overlap/max(1,min(ha,hb))>=0.72 and gap<=0.30*max(ha,hb)
+                    and abs((a[1]+a[3])-(b[1]+b[3]))/2<=0.32*max(ha,hb)
+                    and max(ha,hb)/max(1,min(ha,hb))<1.8):
+                    joined=(min(a[0],b[0]),min(a[1],b[1]),max(a[2],b[2]),max(a[3],b[3]))
+                    boxes=[v for k,v in enumerate(boxes) if k not in (i,j)]+[joined]
+                    boxes.sort(key=lambda v:(v[1],v[0]));changed=True;break
+            if changed:break
+    return boxes
+
+
+def _deduplicate_boxes(boxes, threshold=0.82):
     kept=[]
-    for b in sorted(boxes,key=lambda b:(b[1],b[0])):
-        if any(_iou(b,other)>0.87 for other in kept):continue
-        kept.append(b)
-    return kept[:256]
+    area=lambda b:max(0,b[2]-b[0])*max(0,b[3]-b[1])
+    for box in sorted(boxes,key=area,reverse=True):
+        if not any(_iou(box,prior)>=threshold for prior in kept):
+            kept.append(box)
+    return kept
 
 
 def _iou(a,b):
@@ -129,15 +157,15 @@ def _sequence(boxes):
     for k in order:
         x1,y1,x2,y2=boxes[k]
         cy=(y1+y2)/2; height=y2-y1
-        nearest=None
-        for row in rows:
-            if abs(cy-row['cy'])<=min(height,row['height'])*0.33:
-                nearest=row;break
+        candidates=[(abs(cy-row['cy']),row) for row in rows
+                    if abs(cy-row['cy'])<=0.36*max(height,row['height'])]
+        nearest=min(candidates,key=lambda item:item[0])[1] if candidates else None
         if nearest is None:
             rows.append({'cy':cy,'height':height,'indices':[k]})
         else:
             nearest['indices'].append(k)
             nearest['cy']=(nearest['cy']*(len(nearest['indices'])-1)+cy)/len(nearest['indices'])
+            nearest['height']=max(nearest['height'],height)
     rows.sort(key=lambda r:r['cy'])
     return [sorted(r['indices'],key=lambda k:boxes[k][0]) for r in rows]
 
@@ -151,18 +179,15 @@ def _trocr_lines(image:Image.Image, boxes):
         for start in range(0,len(boxes),batch_size):
             crops=[]
             for box in boxes[start:start+batch_size]:
-                crop=image.crop(box).convert('RGB')
-                # Give TrOCR a small, dynamic margin and a larger raster. This
-                # improves thin handwritten strokes without using fixed page
-                # coordinates or altering the recorded source geometry.
-                margin=max(4, round(min(crop.size) * 0.08))
-                crop=ImageOps.expand(crop, border=margin, fill='white')
-                scale=max(1, min(3, round(160 / max(1, crop.height))))
-                if scale > 1:
-                    crop=crop.resize((crop.width*scale, crop.height*scale), Image.Resampling.LANCZOS)
+                x1,y1,x2,y2=box;w=x2-x1;h=y2-y1
+                px=max(3,min(round(w*0.06),round(h*0.50)))
+                py=max(3,round(h*0.13))
+                crop=image.crop((max(0,x1-px),max(0,y1-py),
+                                 min(image.width,x2+px),min(image.height,y2+py))).convert('RGB')
+                crop=ImageOps.expand(crop,border=max(4,round(crop.height*0.08)),fill='white')
                 crops.append(crop)
             pixels=processor(images=crops,return_tensors='pt').pixel_values.to(device)
-            ids=model.generate(pixels,max_new_tokens=96,num_beams=2,early_stopping=True)
+            ids=model.generate(pixels,max_new_tokens=64,num_beams=2)
             texts += [t.strip() for t in processor.batch_decode(ids,skip_special_tokens=True)]
     return texts
 

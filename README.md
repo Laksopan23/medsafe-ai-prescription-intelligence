@@ -1,4 +1,4 @@
-> **Current application:** Start with [README_START_HERE.md](README_START_HERE.md). This file describes historical research APIs and the earlier Notebook 44 integration. The supported product is the modular React/FastAPI application launched through `start_product.py`, `start_windows.bat`, `start_linux_mac.sh`, or Docker Compose. The latest image preprocessing, atomic storage and independent OCR evaluation are documented in the start guide. Historical API research notes below are preserved for reproducibility.
+> **Current application:** Start with [README_START_HERE.md](README_START_HERE.md) and [the current thesis evidence report](docs/THESIS_IMPLEMENTATION_EVIDENCE_2026-10-22.md). This file describes historical research APIs and earlier Notebook 44 integration; historical notes below are not current verification claims. The supported React/FastAPI application is launched through `start_product.py`, `start_windows.bat`, `start_linux_mac.sh`, or Docker Compose.
 
 ---
 

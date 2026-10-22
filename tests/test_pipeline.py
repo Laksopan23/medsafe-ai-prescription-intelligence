@@ -128,7 +128,10 @@ def test_reference_candidate_not_verified():
 
 def test_api_health_and_text():
     with TestClient(app) as c:
-        assert c.get('/api/health').json()['model_trained'] is False
+        from medsafe.trocr import checkpoint_status
+        health=c.get('/api/health').json()
+        assert health['model_trained'] is checkpoint_status()['ready_for_load']
+        assert health['clinical_use_permitted'] is False
         assert c.get('/').status_code==200
         r=c.post('/api/analyze-text',json={'text':sample()})
         assert r.status_code==200 and r.json()['checks']['medicine_identity']=='SYNTHETIC_FIXTURE_ONLY'
@@ -150,7 +153,7 @@ def test_real_tesseract_image_endpoint():
         d.text((28,10+idx*57),line,fill='black',font=f)
     b=io.BytesIO();im.save(b,format='PNG')
     with TestClient(app) as c:
-        r=c.post('/api/analyze-image',content=b.getvalue(),headers={'content-type':'image/png'})
+        r=c.post('/api/analyze-image?engine=tesseract',content=b.getvalue(),headers={'content-type':'image/png'})
         assert r.status_code==200
         j=r.json()
         assert j['ocr']['engine']=='tesseract'

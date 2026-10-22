@@ -41,7 +41,14 @@ def test_missing_dose_blocks_reviewed_age_screen(monkeypatch,tmp_path):
 def test_complete_fictional_fixture_can_trigger_advisory_not_clearance(monkeypatch,tmp_path):
     report=_analyze(monkeypatch,tmp_path,BASE+"Dose: 500 mg\nFrequency: BID\nAge: 10 years")
     m=report["medications"][0]
-    assert m["reviewed_dose_rule"]["status"]=="REVIEW_THRESHOLD_EXCEEDED"
+    assert m["reviewed_dose_rule"]["status"]=="NOT_EVALUATED"
     assert m["reviewed_age_rule"]["status"]=="REVIEW_AGE_RANGE_FLAG"
     assert report["clinical_clearance"] is False
     assert report["can_auto_dispense"] is False
+
+
+def test_age_applicable_fictional_rule_can_flag_amount(monkeypatch,tmp_path):
+    report=_analyze(monkeypatch,tmp_path,BASE+"Dose: 500 mg\nFrequency: BID\nAge: 20 years")
+    med=report['medications'][0]
+    assert med['reviewed_dose_rule']['status']=='REVIEW_THRESHOLD_EXCEEDED'
+    assert med['reviewed_age_rule']['status']=='WITHIN_REVIEWED_AGE_RANGE_NOT_PROOF_OF_SAFETY'

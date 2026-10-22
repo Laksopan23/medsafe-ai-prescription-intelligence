@@ -1,6 +1,6 @@
 import json
 import pytest
-from medsafe.evaluation import evaluate,edit_distance
+from medsafe.evaluation import evaluate,edit_distance,wilson_interval
 from medsafe.rule_registry import load_reviewed_rules,match_rule,assess_reviewed_rule,RuleRegistryError
 
 def test_cer_wer_and_fields():
@@ -9,6 +9,22 @@ def test_cer_wer_and_fields():
     assert r['fields']['dose']['accuracy']==0
     assert r['ocr']['CER']==0.2 and r['ocr']['WER']==0.5
     assert r['alerts']['fn']==1 and r['alerts']['recall']==0
+
+
+def test_alert_coverage_specificity_and_intervals_do_not_count_abstentions_as_negative():
+    rows=[{'gold':{},'predicted':{},'gold_alert':True,'predicted_alert':True,
+           'gold_age_flag':False,'predicted_age_flag':False},
+          {'gold':{},'predicted':{},'gold_alert':False,'predicted_alert':False},
+          {'gold':{},'predicted':{}}]
+    result=evaluate(rows)
+    assert result['alerts']['n']==2 and result['alerts']['abstained_n']==1
+    assert result['alerts']['coverage']==2/3
+    assert result['alerts']['specificity']==1
+    assert result['age_alerts']['abstained_n']==2
+    assert result['alerts']['precision_95ci'][0]<1
+    assert wilson_interval(0,0) is None
+    with pytest.raises(ValueError,match='Incomplete'):
+        evaluate([{'gold':{},'predicted':{},'gold_alert':False}])
 
 def test_empty_dataset_rejected():
     with pytest.raises(ValueError): evaluate([])

@@ -88,9 +88,9 @@ def test_reviewed_rule_age_and_dose_flags_only_on_exact_match(client,tmp_path,mo
     from medsafe.pipeline import analyze_text
     text='Age: 70 years\nMedicine: EXAMPLEMED\nDose: 50 mg\nFrequency: twice daily\nRoute: oral\nProduct Identifier: PRODUCT-123\nIndication: synthetic test\nPopulation: adult'
     rep=_rule_assessment(analyze_text(text))
-    assert rep['medications'][0]['reviewed_dose_rule']['status']=='REVIEW_THRESHOLD_EXCEEDED'
+    assert rep['medications'][0]['reviewed_dose_rule']['status']=='NOT_EVALUATED'
     assert rep['medications'][0]['reviewed_age_rule']['status']=='REVIEW_AGE_RANGE_FLAG'
-    assert 'REVIEWED_RULE_THRESHOLD_EXCEEDED' in {i['code'] for i in rep['issues']}
+    assert 'REVIEWED_RULE_THRESHOLD_EXCEEDED' not in {i['code'] for i in rep['issues']}
     rep2=_rule_assessment(analyze_text(text.replace('PRODUCT-123','WRONG-ID')))
     assert rep2['medications'][0]['reviewed_dose_rule']['status']=='NOT_EVALUATED'
     assert rep2['medications'][0]['reviewed_age_rule']['status']=='UNABLE_TO_VALIDATE'

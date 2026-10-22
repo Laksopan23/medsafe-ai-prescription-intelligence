@@ -34,3 +34,16 @@
 - All results are research screening flags, not diagnoses or dispensing authorization.
 
 **Approval decision:** BLOCKED until signed professional evidence and independent evaluation are supplied.
+
+## Draft-to-import workflow
+
+The application can fetch full openFDA label sections for a DailyMed `setid`, showing label ID, effective date and retrieval time. This is **candidate source text**, not a verified local product match. The optional `OPENFDA_API_KEY` remains server-side. Public reference lookups use bounded GET retries, timeouts and a ten-minute in-memory cache; an approved-rule file is never derived from or refreshed by this cache.
+
+```bash
+python -m medsafe.rule_workflow draft --setid YOUR-SETID --output runtime_data/rule_drafts/example.json
+python -m medsafe.rule_workflow inspect /path/to/externally_approved_registry.json
+```
+
+The first command creates a `DRAFT` containing no numeric threshold. Local lifecycle changes may move a draft to `AWAITING_REVIEW` or `REJECTED`, and an approved record to `EXPIRED` or `SUPERSEDED`; this application has **no command to approve a rule**. The second command checks structure and reports a SHA-256 digest; it does not deploy or independently authenticate the listed reviewers. Activation still requires a separately governed `MEDSAFE_REVIEWED_RULES` file. The repository default is the empty registry.
+
+Schema version 2 requires an exact ingredient/product/route/indication/population context; source label ID, revision and retrieval time; primary and distinct second reviewer declarations, credentials, dates and approval record ID; and expiry. A concentration-based mL comparison also requires a positive `concentration_mg_per_ml`, the matching product identifier and a sourced concentration section. Expired or superseded rules are excluded at assessment time. Even an approved-looking JSON file cannot prove the reviewers' identities or clinical correctness; governance must verify these offline.

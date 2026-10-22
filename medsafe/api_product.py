@@ -13,7 +13,7 @@ from .ocr_product import recognize,status as ocr_status,OCRUnavailable
 from .pipeline import analyze_text
 from .rule_registry import load_reviewed_rules, match_rule, assess_reviewed_rule, RuleRegistryError
 from .extraction import number_and_unit,parse_frequency
-from .references import lookup
+from .references import lookup, label_details
 from .preprocessing import prepare_ocr_bytes, MODES
 
 app=FastAPI(title='MedSafe-AI | Prescription Intelligence', version='1.0.0',
@@ -172,9 +172,14 @@ def delete(pid:str):
 def reference(medicine:str=Query(min_length=2,max_length=80)):
     return lookup(medicine)
 
+
+@app.get('/api/reference/label/{setid}')
+def reference_label(setid: str):
+    return label_details(setid)
+
 @app.get('/api/research')
 def research():
-    return {'ocr_models':['Tesseract (baseline)','EasyOCR (benchmark adapter)','PaddleOCR (benchmark adapter)','TrOCR (pretrained, primary)'],
+    return {'ocr_models':['Tesseract (baseline)','EasyOCR (optional)','PaddleOCR (optional)','CRAFT + local Notebook 44 fine-tuned TrOCR (optional)'],
             'available_engines':ocr_status().get('benchmark_engines',{}),
             'metric_status':'NO_INDEPENDENT_VERIFIED_TEST_METRICS_IN_APPLICATION',
             'evaluation_policy':'CER/WER and field accuracy require independently verified human references and isolated held-out testing.',

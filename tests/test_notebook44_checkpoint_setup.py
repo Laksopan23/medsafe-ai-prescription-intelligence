@@ -22,10 +22,28 @@ def test_in_repository_checkpoint_autodiscovery(monkeypatch,tmp_path):
     assert trocr.configured_checkpoint()==path
     for filename in trocr._REQUIRED:
         (path/filename).write_text("test placeholder",encoding="utf-8")
+    import json,struct
+    header=json.dumps({'fixture.weight':{'dtype':'F32','shape':[1],'data_offsets':[0,4]}}).encode()
+    (path/'model.safetensors').write_bytes(struct.pack('<Q',len(header))+header+struct.pack('<f',1.0))
     state=trocr.checkpoint_status()
     assert state["ready_for_load"] is True
     assert state["weights_verified_by_inference"] is False
     assert state["checkpoint_path"]==str(path)
+
+
+def test_incomplete_cloud_copy_is_not_model_ready(monkeypatch,tmp_path):
+    path=tmp_path/'partial'
+    path.mkdir()
+    for filename in trocr._REQUIRED:
+        (path/filename).write_text('placeholder',encoding='utf-8')
+    import json,struct
+    header=json.dumps({'fixture.weight':{'dtype':'F32','shape':[1],'data_offsets':[0,4]}}).encode()
+    (path/'model.safetensors').write_bytes(struct.pack('<Q',len(header))+header+b'\x00')
+    monkeypatch.setenv('MEDSAFE_TROCR_MODEL_DIR',str(path))
+    state=trocr.checkpoint_status()
+    assert state['files_present'] is True
+    assert state['ready_for_load'] is False
+    assert 'Incomplete' in state['reason']
 
 def test_absent_checkpoint_is_unavailable(monkeypatch,tmp_path):
     monkeypatch.delenv("MEDSAFE_TROCR_MODEL_DIR",raising=False)

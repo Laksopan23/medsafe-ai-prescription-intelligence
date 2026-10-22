@@ -17,7 +17,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from medsafe.evaluation import evaluate
+from medsafe.evaluation import FIELDS, evaluate, norm
 from medsafe.extraction import (
     extract_prescription, number_and_unit, parse_age, parse_frequency,
 )
@@ -51,6 +51,18 @@ def read_manifest(manifest: Path, *, require_human=True):
             raise ValueError(f"Manifest line {index}: nonempty gold_transcript required")
         if not isinstance(row.get("gold"), dict):
             raise ValueError(f"Manifest line {index}: gold field dictionary required")
+        if 'gold_medications' in row and (
+            not isinstance(row['gold_medications'], list) or not row['gold_medications']
+            or any(not isinstance(m, dict) or not str(m.get('medicine') or '').strip()
+                   for m in row['gold_medications'])
+        ):
+            raise ValueError(f"Manifest line {index}: gold_medications must list verified medicine entries")
+        if 'conditions' in row and (
+            not isinstance(row['conditions'], list) or
+            any(not isinstance(tag, str) or not tag.strip() or len(tag)>40
+                for tag in row['conditions'])
+        ):
+            raise ValueError(f"Manifest line {index}: invalid image condition tags")
         if require_human:
             if (
                 row.get("human_verified") is not True
@@ -84,6 +96,39 @@ def _timing_stats(seconds):
         "median_s": round(statistics.median(ordered), 4),
         "p95_s": round(ordered[math.ceil(.95 * len(ordered)) - 1], 4),
         "max_s": round(ordered[-1], 4),
+    }
+
+
+def _medication_metrics(pairs):
+    """Score ordered medication entries, including misses and spurious entries.
+
+    This metric is only available when the manifest explicitly includes a
+    human-verified gold_medications array in source-image order.
+    """
+    if not pairs:
+        return None
+    fields = {name: {'correct': 0, 'total': 0, 'missing': 0} for name in FIELDS}
+    count_exact = 0
+    spurious = 0
+    for gold, predicted in pairs:
+        count_exact += len(gold) == len(predicted)
+        spurious += max(0, len(predicted) - len(gold))
+        for i, expected in enumerate(gold):
+            actual = predicted[i] if i < len(predicted) else {}
+            for name in FIELDS:
+                truth = norm(expected.get(name))
+                observed = norm(actual.get(name))
+                if truth:
+                    fields[name]['total'] += 1
+                    fields[name]['correct'] += truth == observed
+                    fields[name]['missing'] += not observed
+    return {
+        'alignment': 'SOURCE_IMAGE_ORDER_NO_FUZZY_MATCHING',
+        'images_with_medication_annotations': len(pairs),
+        'exact_medication_count_images': count_exact,
+        'spurious_predicted_entries': spurious,
+        'fields': {name: {**value, 'accuracy': value['correct'] / value['total']
+                          if value['total'] else None} for name, value in fields.items()},
     }
 
 
@@ -157,15 +202,23 @@ def run_benchmark(manifest, *, engines=ENGINES, require_human=True, preprocess="
         records = []
         samples = []
         latencies = []
+        stage_latencies = {key: [] for key in ('preprocessing', 'ocr', 'extraction', 'safety_screen')}
         failures = []
+        medication_pairs = []
+        condition_records = {}
         for item in rows:
             try:
                 start = time.perf_counter()
                 original = Path(item["_path"]).read_bytes()
                 model_input, preparation = prepare_ocr_bytes(original, mode=preprocess)
+                preprocessed_at = time.perf_counter()
                 recognized = recognize(model_input, engine=engine)
+                recognized_at = time.perf_counter()
                 text = str(recognized.get("text") or "")
                 blocks = extract_prescription(text, allow_unlabeled=True)
+                predicted_medications = [block['fields'] for block in blocks]
+                if 'gold_medications' in item:
+                    medication_pairs.append((item['gold_medications'], predicted_medications))
                 extracted = blocks[0]["fields"] if blocks else {}
                 # Multi-drug prescriptions must not be silently scored as if
                 # the first medication represented the entire prescription.
@@ -175,6 +228,7 @@ def run_benchmark(manifest, *, engines=ENGINES, require_human=True, preprocess="
                         extracted[key] = " | ".join(
                             str(block["fields"].get(key, "")) for block in blocks
                         )
+                extracted_at = time.perf_counter()
                 if require_human:
                     dose_flag, age_flag = _reviewed_screen(text)
                 else:
@@ -184,6 +238,14 @@ def run_benchmark(manifest, *, engines=ENGINES, require_human=True, preprocess="
                         blocks[0]["fields"], item.get("synthetic_rule")
                     ) if len(blocks)==1 else (None, None)
                 elapsed = time.perf_counter() - start
+                stage_seconds = {
+                    'preprocessing': preprocessed_at-start,
+                    'ocr': recognized_at-preprocessed_at,
+                    'extraction': extracted_at-recognized_at,
+                    'safety_screen': elapsed-(extracted_at-start),
+                }
+                for stage, duration in stage_seconds.items():
+                    stage_latencies[stage].append(duration)
                 rec = {
                     "gold": item["gold"], "predicted": extracted,
                     "gold_transcript": item["gold_transcript"],
@@ -197,11 +259,15 @@ def run_benchmark(manifest, *, engines=ENGINES, require_human=True, preprocess="
                     rec["gold_age_flag"] = item["gold_age_flag"]
                     rec["predicted_age_flag"] = age_flag
                 records.append(rec)
+                for tag in item.get('conditions', []):
+                    condition_records.setdefault(tag, []).append(rec)
                 latencies.append(elapsed)
                 samples.append({
                     "image_id": item["image_id"], "sha256": item["sha256"],
                     "engine": engine, "transcription": text, "fields": extracted,
+                    "medications": predicted_medications,
                     "elapsed_seconds": round(elapsed, 5),
+                    "stage_seconds": {key: round(value, 5) for key, value in stage_seconds.items()},
                     "dose_screen": "FLAG" if dose_flag is True else "BELOW_REVIEWED_THRESHOLD" if dose_flag is False else "ABSTAIN",
                     "age_screen": "FLAG" if age_flag is True else "WITHIN_REVIEWED_AGE_RANGE" if age_flag is False else "ABSTAIN",
                     "preprocessing": preparation,
@@ -221,7 +287,14 @@ def run_benchmark(manifest, *, engines=ENGINES, require_human=True, preprocess="
             "coverage": round(len(records) / len(rows), 6),
             "preprocessing_mode": preprocess,
             "timing": _timing_stats(latencies),
+            "stage_timing": {key: _timing_stats(values) for key, values in stage_latencies.items()},
             "metrics": metrics, "ocr_eligible": bool(complete and require_human),
+            "medication_field_metrics": _medication_metrics(medication_pairs) if complete else None,
+            "by_condition": {
+                tag: {'n_total': sum(tag in row.get('conditions', []) for row in rows),
+                      'n_succeeded': len(group), 'metrics': evaluate(group)}
+                for tag, group in condition_records.items()
+            },
             "dose_alert_evaluated_n": dose_coverage,
             "age_alert_evaluated_n": age_coverage,
             "thesis_eligible": bool(

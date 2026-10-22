@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build React application
         run: npm run build
       - name: Run React component regression tests

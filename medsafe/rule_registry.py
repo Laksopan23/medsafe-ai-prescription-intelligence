@@ -4,7 +4,7 @@ This registry intentionally ships with NO real-drug rules. Loading an entry
 never implies that the product has undergone external clinical validation.
 """
 from __future__ import annotations
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 import math
 from pathlib import Path
@@ -28,6 +28,15 @@ def _date(value, label):
     except (TypeError, ValueError) as exc:
         raise RuleRegistryError('Invalid '+label) from exc
 
+
+def _active(rule):
+    if not isinstance(rule, dict) or rule.get('review_status') != 'APPROVED_BY_QUALIFIED_REVIEWER':
+        return False
+    try:
+        return not rule.get('expires_on') or _date(rule['expires_on'], 'expiry') >= date.today()
+    except RuleRegistryError:
+        return False
+
 def load_reviewed_rules(path: str | Path):
     try:
         data=json.loads(Path(path).read_text(encoding='utf-8'))
@@ -40,6 +49,8 @@ def load_reviewed_rules(path: str | Path):
     for i,entry in enumerate(data):
         if not isinstance(entry,dict):
             raise RuleRegistryError(f'Rule {i} is not an object')
+        if entry.get('schema_version', 1) not in (1, 2):
+            raise RuleRegistryError(f'Rule {i} unsupported schema version')
         for key in REQUIRED:
             value=entry.get(key)
             if key in ('max_single','max_daily'):
@@ -49,8 +60,33 @@ def load_reviewed_rules(path: str | Path):
                 raise RuleRegistryError(f'Rule {i} missing {key}')
         if entry.get('review_status')!='APPROVED_BY_QUALIFIED_REVIEWER':
             raise RuleRegistryError(f'Rule {i} is not approved by a qualified reviewer')
+        if entry.get('schema_version') == 2:
+            mandatory = ('source_label_id', 'source_revision', 'source_retrieved_utc',
+                         'reviewer_credentials', 'reviewer_institution',
+                         'second_reviewer', 'second_reviewer_credentials',
+                         'second_review_date', 'approval_record_id', 'expires_on')
+            if any(not isinstance(entry.get(key), str) or not entry[key].strip()
+                   for key in mandatory):
+                raise RuleRegistryError(f'Rule {i} missing independent approval provenance')
+            if entry['reviewer'].casefold().strip() == entry['second_reviewer'].casefold().strip():
+                raise RuleRegistryError(f'Rule {i} requires a distinct second reviewer')
+            if _date(entry['second_review_date'], f'rule {i} second review date') > date.today():
+                raise RuleRegistryError(f'Rule {i} second review date is in the future')
+            try:
+                retrieved = datetime.fromisoformat(entry['source_retrieved_utc'].replace('Z', '+00:00'))
+                if retrieved.tzinfo is None or retrieved > datetime.now(timezone.utc):
+                    raise ValueError('Missing timezone or future retrieval')
+            except (TypeError, ValueError) as exc:
+                raise RuleRegistryError(f'Rule {i} invalid source retrieval time') from exc
         if entry['dose_unit'] not in ('mg','mcg','g'):
             raise RuleRegistryError(f'Rule {i} invalid dose unit')
+        concentration=entry.get('concentration_mg_per_ml')
+        if concentration is not None and (
+            entry['dose_unit']!='mg' or not _positive_finite_number(concentration) or
+            not str(entry.get('concentration_source_section') or '').strip() or
+            entry.get('concentration_product_identifier')!=entry['product_identifier']
+        ):
+            raise RuleRegistryError(f'Rule {i} has unverified or inconsistent concentration')
         try:url=urlparse(entry['source_url'])
         except ValueError as exc:raise RuleRegistryError(f'Rule {i} invalid source URL') from exc
         if url.scheme!='https' or not url.hostname or url.username or url.password:
@@ -58,6 +94,9 @@ def load_reviewed_rules(path: str | Path):
         reviewed=_date(entry['review_date'],f'rule {i} review date')
         if reviewed>date.today():
             raise RuleRegistryError(f'Rule {i} review date is in the future')
+        if entry.get('schema_version') == 2 and _date(entry['second_review_date'],
+                f'rule {i} second review date') < reviewed:
+            raise RuleRegistryError(f'Rule {i} second review precedes first review')
         if 'expires_on' in entry:
             expiry=_date(entry['expires_on'],f'rule {i} expiry')
             if expiry<date.today():
@@ -94,7 +133,7 @@ def match_rule(rules, *, ingredient, product_identifier, route, indication, popu
         return None
     normalized=tuple(v.casefold().strip() for v in target)
     matches=[r for r in rules if
-             isinstance(r,dict) and all(isinstance(r.get(k),str) for k in CONTEXT_KEYS)
+             _active(r) and all(isinstance(r.get(k),str) for k in CONTEXT_KEYS)
              and tuple(r[k].casefold().strip() for k in CONTEXT_KEYS)==normalized]
     return matches[0] if len(matches)==1 else None
 
@@ -106,19 +145,29 @@ def assess_reviewed_rule(rule, *, dose, unit, frequency, weight_kg=None):
         not 1<=frequency<=24 or not _positive_finite_number(dose) or
         not all(_positive_finite_number(rule.get(k)) for k in ('max_single','max_daily'))):
         return unresolved
-    # Mass conversions are dimensionally exact; volume-to-mass conversion is
-    # deliberately forbidden without formulation-specific concentration.
+    # Mass conversions are exact; a volume requires an explicitly reviewed,
+    # formulation-specific concentration in the matching product rule.
     mass_to_mg={'mcg':0.001,'mg':1.0,'g':1000.0}
-    if unit not in mass_to_mg or rule.get('dose_unit') not in mass_to_mg:
+    if rule.get('dose_unit') not in mass_to_mg:
         return unresolved
-    normalized_dose=dose * mass_to_mg[unit] / mass_to_mg[rule['dose_unit']]
+    if unit and unit.lower()=='ml':
+        concentration=rule.get('concentration_mg_per_ml')
+        if (rule.get('dose_unit')!='mg' or not _positive_finite_number(concentration)
+            or not str(rule.get('concentration_source_section') or '').strip()
+            or rule.get('concentration_product_identifier')!=rule.get('product_identifier')):
+            return {**unresolved, 'reason':'Verified product concentration is required for a volume dose'}
+        normalized_dose=dose*concentration
+    elif unit in mass_to_mg:
+        normalized_dose=dose * mass_to_mg[unit] / mass_to_mg[rule['dose_unit']]
+    else:
+        return unresolved
     if not math.isfinite(normalized_dose) or normalized_dose<=0:
         return unresolved
     # Direct callers must not bypass the approval gate by omitting the status.
-    if rule.get('review_status') != 'APPROVED_BY_QUALIFIED_REVIEWER':
+    if not _active(rule):
         return unresolved
     weighted=('max_single_mg_per_kg' in rule or 'max_daily_mg_per_kg' in rule)
-    if weighted and (unit!='mg' or not _positive_finite_number(weight_kg) or
+    if weighted and (rule.get('dose_unit')!='mg' or not _positive_finite_number(weight_kg) or
                      not all(_positive_finite_number(rule.get(k)) for k in
                              ('max_single_mg_per_kg','max_daily_mg_per_kg'))):
         return {**unresolved,'reason':'Valid verified weight and matching mg/kg thresholds are required'}
@@ -140,6 +189,8 @@ def assess_reviewed_rule(rule, *, dose, unit, frequency, weight_kg=None):
         'administered_single':normalized_dose,'administered_daily':total,
         'reviewed_max_single':max_single,'reviewed_max_daily':max_daily,
         'weight_based':weighted,
+        'concentration_mg_per_ml':rule.get('concentration_mg_per_ml') if unit and unit.lower()=='ml' else None,
+        'concentration_source_section':rule.get('concentration_source_section') if unit and unit.lower()=='ml' else None,
         'reviewed_adverse_effects':list(rule.get('overdose_adverse_effects',[])) if exceeded else [],
         'clinical_clearance':False
     }
