@@ -187,11 +187,16 @@ def assess_reviewed_rule(rule, *, dose, unit, frequency, weight_kg=None):
                      not all(_positive_finite_number(rule.get(k)) for k in
                              ('max_single_mg_per_kg','max_daily_mg_per_kg'))):
         return {**unresolved,'reason':'Valid verified weight and matching mg/kg thresholds are required'}
-    max_single=Decimal(str(rule['max_single']))
-    max_daily=Decimal(str(rule['max_daily']))
+    absolute_single=Decimal(str(rule['max_single']))
+    absolute_daily=Decimal(str(rule['max_daily']))
+    max_single=absolute_single
+    max_daily=absolute_daily
+    weight_single=weight_daily=None
     if weighted:
-        max_single=min(max_single,Decimal(str(rule['max_single_mg_per_kg']))*Decimal(str(weight_kg)))
-        max_daily=min(max_daily,Decimal(str(rule['max_daily_mg_per_kg']))*Decimal(str(weight_kg)))
+        weight_single=Decimal(str(rule['max_single_mg_per_kg']))*Decimal(str(weight_kg))
+        weight_daily=Decimal(str(rule['max_daily_mg_per_kg']))*Decimal(str(weight_kg))
+        max_single=min(max_single,weight_single)
+        max_daily=min(max_daily,weight_daily)
     total=normalized_dose*frequency
     if not total.is_finite():
         return unresolved
@@ -203,7 +208,7 @@ def assess_reviewed_rule(rule, *, dose, unit, frequency, weight_kg=None):
         comparisons.append('EXCEEDS_REVIEWED_SINGLE_DOSE_THRESHOLD')
     if daily_exceeded:
         comparisons.append('EXCEEDS_REVIEWED_DAILY_DOSE_THRESHOLD')
-    if weighted and exceeded:
+    if weighted and (normalized_dose>weight_single or total>weight_daily):
         comparisons.append('EXCEEDS_REVIEWED_WEIGHT_BASED_THRESHOLD')
     if not comparisons:
         comparisons.append('BELOW_REVIEWED_THRESHOLD_NOT_PROOF_OF_SAFETY')

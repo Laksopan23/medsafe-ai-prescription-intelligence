@@ -33,7 +33,9 @@ def assess_report(report):
         # Even a matching label must abstain when extraction has a blocking issue.
         blocked=bool(m['extraction'].get('candidate_only')) or any(
             item.get('severity')=='BLOCK' for item in m.get('issues',[])
-        )
+        ) or any(item.get('code') in ('DUPLICATE_MEDICATION_REGIMEN',
+                                    'CONFLICTING_PRESCRIPTION_DETAILS')
+                 for item in report.get('issues',[]))
         if blocked:
             rule=None
         parsed=number_and_unit(fields.get('dose',''))
@@ -74,6 +76,12 @@ def assess_report(report):
             result={**result, 'reason':'Prescription contains unresolved or conflicting fields; verify transcription first'}
             m['reviewed_dose_rule']=result
             m['dose_validation_available']=False
+        elif (age_check.get('outcome')=='WITHIN_REVIEWED_AGE_APPLICABILITY_NOT_PROOF_OF_SAFETY'
+              and result['status']=='REVIEW_THRESHOLD_EXCEEDED'):
+            age_check['outcome'] = ('EXCEEDS_REVIEWED_WEIGHT_BASED_THRESHOLD'
+                                    if 'EXCEEDS_REVIEWED_WEIGHT_BASED_THRESHOLD' in result.get('comparison_outcomes',[])
+                                    else 'EXCEEDS_REVIEWED_AGE_SPECIFIC_THRESHOLD')
+            age_check['note']='A matched reviewed dose threshold was exceeded inside the reviewed age range; professional review is required'
         m['reviewed_age_rule']=age_check
         from medsafe.validation import finding
         alerts=[]
